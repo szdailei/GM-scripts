@@ -3,9 +3,10 @@
 // @namespace    https://greasyfork.org
 // @version      1.0
 // @description  打开中文字幕，无中文字幕则将第一个字幕自动翻译为简体中文，无自动翻译则使用第一个字幕
-// @author     szdailei@gmail.com
-// @match      https://www.youtube.com/watch?v=*
-// @run-at      document-end
+// @author      szdailei@gmail.com
+// @source      https://github.com/szdailei/GM-scripts
+// @match       https://www.youtube.com/watch?v=*
+// @run-at       document-end
 // ==/UserScript==
 
 ('use strict');
