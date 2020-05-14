@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name               Youtube SubTitle
+// @name               Youtube Subtitle
 // @namespace    https://greasyfork.org
-// @version      1.0
+// @version      1.1.0
 // @description  打开中文字幕，无中文字幕则将第一个字幕自动翻译为简体中文，无自动翻译则使用第一个字幕
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
@@ -9,71 +9,125 @@
 // @run-at       document-end
 // ==/UserScript==
 
-('use strict');
-(function youtubeSubTitle() {
-  var waitVideoLoadCount = 0;
-  var waitButtonLoadCount = 0;
+/**
+require: none
+ensure: 
+  1. If there is Chinese subtitle, turn on it.
+  2. If there is non-Chinese subtitle and auto-translation, turn on the first subtitle and translate to Simp Chinese.
+  3. If there is non-Chinese subtitle without auto-translation, turn on the first subtitle.
+  4. If there isn't subtitle, doesn't turn on subtitle.
+*/
+'use strict';
+(function youtubeSubtitle() {
+  var videoLoadCount, subtitleMenuLoadCount, translateToSimpChineseCount;
+  videoLoadCount = subtitleMenuLoadCount = translateToSimpChineseCount = 0;
+  const MAX_VIDEO_LOAD_COUNT = 10;
+  const MAX_SUBTITLE_MENU_LOAD_COUNT = 10;
+  const MAX_TRANS_TO_SIMP_CHINESE_COUNT = 5;
+  const CHINESE_SUBTITLE = 'Chinese Subtitle';
+  const NO_SUBTITLE = 'No Subtitle';
+  const NON_CHINESE_SUBTITLE = 'Non Chinese Subtitle';
+  const ON_SUBTITLE_MENU = 'On Subtitle Menu';
 
-  function translateToSimpChinese() {
-    var menuItemRadios = document.querySelectorAll('[role="menuitemradio"]');
-    var length = menuItemRadios.length;
-    for (var i = length - 1; i > -1; i--) {
-      var innerText = menuItemRadios[i].innerText;
-      if (innerText.indexOf('中文（简体）') !== -1) {
-        menuItemRadios[i].click();
+  function onDOMContentLoaded() {
+    if (videoLoadCount === MAX_VIDEO_LOAD_COUNT) {
+      return;
+    }
+    var videos = document.getElementsByTagName('video');
+    if (videos !== null) {
+      var video = videos.item(0);
+      if (video !== null) {
+        video.play();
+        onVideoPlayed();
         return;
       }
     }
+    videoLoadCount++;
+    setTimeout(onDOMContentLoaded, 1000);
   }
 
-  function turnOnChineseSubTitle() {
-    var menuItemRadios = document.querySelectorAll('[role="menuitemradio"]');
-    var length = menuItemRadios.length;
-    for (var i = 0; i < length; i++) {
-      var innerText = menuItemRadios[i].innerText;
+  function onVideoPlayed() {
+    if (subtitleMenuLoadCount === MAX_SUBTITLE_MENU_LOAD_COUNT) {
+      return;
+    }
+    var SubtitlesButtons = document.getElementsByClassName('ytp-subtitles-button');
+    if (SubtitlesButtons !== null) {
+      var SubtitlesButton = SubtitlesButtons[0];
       if (
-        innerText.indexOf('中文') !== -1 ||
-        innerText.indexOf('中文（中国）') !== -1 ||
-        innerText.indexOf('中文（香港）') !== -1 ||
-        innerText.indexOf('中文（台湾）') !== -1 ||
-        innerText.indexOf('中文（简体）') !== -1 ||
-        innerText.indexOf('中文（繁体）') !== -1
+        SubtitlesButton !== undefined &&
+        SubtitlesButton !== null &&
+        SubtitlesButton.getAttribute('aria-pressed') !== null
       ) {
-        menuItemRadios[i].click();
-        return true;
+        if (SubtitlesButton.getAttribute('aria-pressed') === false) {
+          SubtitlesButton.click();
+        }
+        onSubtitlesMenuLoaded();
+        return;
       }
     }
-    if (menuItemRadios[length - 1].innerText === '自动翻译') {
-      menuItemRadios[length - 1].click();
-      return false;
-    }
-    return undefined;
+    subtitleMenuLoadCount++;
+    setTimeout(onVideoPlayed, 1000);
   }
 
-  function turnOnFirstSubTitle() {
+  function onSubtitlesMenuLoaded() {
+    var turnOnChineseSubtitleResult = turnOnChineseSubtitle();
+    clickSettingsButtion();
+    if (turnOnChineseSubtitleResult === NON_CHINESE_SUBTITLE) {
+      translateToSimpChinese();
+    }
+  }
+
+  function turnOnChineseSubtitle() {
+    clickSettingsButtion();
+    var enterSubtitleMenuResult = enterSubtitleMenu();
+    if (enterSubtitleMenuResult === CHINESE_SUBTITLE) {
+      return;
+    }
     var menuItemRadios = document.querySelectorAll('[role="menuitemradio"]');
     var length = menuItemRadios.length;
+    var firstSubtitleIndex = 0;
     for (var i = 0; i < length; i++) {
       var innerText = menuItemRadios[i].innerText;
       if (innerText.indexOf('添加字幕') !== -1 || innerText.indexOf('关闭') !== -1) {
         continue;
       }
-      menuItemRadios[i].click();
-      return true;
-    }
-    return false;
-  }
-
-  function enterSubtitleMenu() {
-    var menuItems = document.querySelectorAll('[role="menuitem"]');
-    var length = menuItems.length;
-    for (var i = 0; i < length; i++) {
-      var innerText = menuItems[i].innerText;
-      if (innerText.indexOf('字幕') !== -1) {
-        menuItems[i].click();
-        break;
+      firstSubtitleIndex = i;
+      if (innerText.indexOf('中文') !== -1) {
+        menuItemRadios[i].click();
+        return CHINESE_SUBTITLE;
       }
     }
+    if (firstSubtitleIndex === 0) {
+      return NO_SUBTITLE;
+    } else {
+      menuItemRadios[firstSubtitleIndex].click();
+      return NON_CHINESE_SUBTITLE;
+    }
+  }
+
+  function translateToSimpChinese() {
+    if (subtitleMenuLoadCount === MAX_TRANS_TO_SIMP_CHINESE_COUNT) {
+      return;
+    }
+    clickSettingsButtion();
+    enterSubtitleMenu();
+    var menuItemRadios = document.querySelectorAll('[role="menuitemradio"]');
+    var length = menuItemRadios.length;
+    if (menuItemRadios[length - 1].innerText === '自动翻译') {
+      menuItemRadios[length - 1].click();
+      menuItemRadios = document.querySelectorAll('[role="menuitemradio"]');
+      length = menuItemRadios.length;
+      for (var i = length - 1; i > -1; i--) {
+        var innerText = menuItemRadios[i].innerText;
+        if (innerText.indexOf('中文（简体）') !== -1) {
+          menuItemRadios[i].click();
+          return;
+        }
+      }
+      return;
+    }
+    translateToSimpChineseCount++;
+    setTimeout(translateToSimpChinese, 1000);
   }
 
   function clickSettingsButtion() {
@@ -82,67 +136,22 @@
     settingsButtion.click();
   }
 
-  function onSubMenuLoaded() {
-    clickSettingsButtion();
-    enterSubtitleMenu();
-    var turnOnChineseSubTitleResult = turnOnChineseSubTitle();
-    if (turnOnChineseSubTitleResult === true || turnOnChineseSubTitleResult === undefined) {
-      // Chinese subTitle, or keep using firstSubTitle without Chinese subTitle and without '自动翻译'
-      clickSettingsButtion();
-      return;
-    } else if (turnOnChineseSubTitleResult === false) {
-      // no Chinese subTitle, found '自动翻译'
-      translateToSimpChinese();
-      return;
-    }
-  }
-
-  function onSubtitlesEnabled() {
-    clickSettingsButtion();
-    enterSubtitleMenu();
-    var turnOnFirstSubTitleResult = turnOnFirstSubTitle();
-    clickSettingsButtion();
-    if (turnOnFirstSubTitleResult === true) {
-      setTimeout(onSubMenuLoaded, 100);
-    }
-  }
-
-  function onVideoPlayed() {
-    var subtitlesButtons = document.getElementsByClassName('ytp-subtitles-button');
-    if (subtitlesButtons !== null) {
-      var subtitlesButton = subtitlesButtons[0];
-      if (subtitlesButton !== null && subtitlesButton.getAttribute('aria-pressed') !== null) {
-        if (subtitlesButton.getAttribute('aria-pressed') === false) {
-          subtitlesButton.click();
+  function enterSubtitleMenu() {
+    var menuItems = document.querySelectorAll('[role="menuitem"]');
+    var length = menuItems.length;
+    for (var i = 0; i < length; i++) {
+      var innerText = menuItems[i].innerText;
+      if (innerText.indexOf('字幕') !== -1) {
+        if (innerText.indexOf('中文') !== -1) {
+          return CHINESE_SUBTITLE;
+        } else {
+          menuItems[i].click();
+          return ON_SUBTITLE_MENU;
         }
-        setTimeout(onSubtitlesEnabled, 200);
-        return;
       }
     }
-    if (waitButtonLoadCount === 10) {
-      return;
-    }
-    setTimeout(onVideoPlayed, 1000);
-    waitButtonLoadCount++;
   }
 
-  function onDOMContentLoaded() {
-    var videos = document.getElementsByTagName('video');
-    if (videos != null) {
-      var video = videos.item(0);
-      if (video !== null) {
-        video.play();
-        onVideoPlayed();
-        return;
-      }
-    }
-    if (waitVideoLoadCount === 10) {
-      return;
-    }
-    setTimeout(onDOMContentLoaded, 1000);
-    waitVideoLoadCount++;
-  }
-
-  window.addEventListener('yt-navigate-finish', youtubeSubTitle); // reRun this script if click on youtube link
+  window.addEventListener('yt-navigate-finish', youtubeSubtitle); // reRun this script if click on youtube link
   onDOMContentLoaded();
 })();
