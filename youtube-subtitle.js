@@ -12,7 +12,7 @@
 /**
 require: none
 ensure: 
-  Meet the conditions as the following order:
+  Meet one of the conditions as the following order:
   1. If there is Chinese subtitle, turn on it.
   2. If there is non-Chinese subtitle and auto-translation, turn on the first subtitle and translate to Simp Chinese.
   3. If there is non-Chinese subtitle without auto-translation, turn on the first subtitle.
