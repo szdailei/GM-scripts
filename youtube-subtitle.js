@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Youtube Subtitle
 // @namespace    https://greasyfork.org
-// @version      1.1.0
+// @version      1.1.1
 // @description  打开中文字幕，无中文字幕则将第一个字幕自动翻译为简体中文，无自动翻译则使用第一个字幕
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
@@ -23,7 +23,7 @@ ensure:
   videoLoadCount = subtitleMenuLoadCount = translateToSimpChineseCount = 0;
   const MAX_VIDEO_LOAD_COUNT = 10;
   const MAX_SUBTITLE_MENU_LOAD_COUNT = 10;
-  const MAX_TRANS_TO_SIMP_CHINESE_COUNT = 5;
+  const MAX_TRANS_TO_SIMP_CHINESE_COUNT = 2;
   const CHINESE_SUBTITLE = 'Chinese Subtitle';
   const NO_SUBTITLE = 'No Subtitle';
   const NON_CHINESE_SUBTITLE = 'Non Chinese Subtitle';
@@ -105,8 +105,8 @@ ensure:
     }
   }
 
-  function translateToSimpChinese() {
-    if (subtitleMenuLoadCount === MAX_TRANS_TO_SIMP_CHINESE_COUNT) {
+  function translateToSimpChinese() {    
+    if (translateToSimpChineseCount === MAX_TRANS_TO_SIMP_CHINESE_COUNT) {
       return;
     }
     clickSettingsButtion();
@@ -124,8 +124,10 @@ ensure:
           return;
         }
       }
+      clickSettingsButtion();
       return;
     }
+    clickSettingsButtion();
     translateToSimpChineseCount++;
     setTimeout(translateToSimpChinese, 1000);
   }
