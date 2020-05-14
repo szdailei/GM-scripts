@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Youtube Subtitle
 // @namespace    https://greasyfork.org
-// @version      1.1.1
+// @version      1.1.2
 // @description  打开中文字幕，无中文字幕则将第一个字幕自动翻译为简体中文，无自动翻译则使用第一个字幕
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
@@ -12,6 +12,7 @@
 /**
 require: none
 ensure: 
+  Meet the conditions as the following order:
   1. If there is Chinese subtitle, turn on it.
   2. If there is non-Chinese subtitle and auto-translation, turn on the first subtitle and translate to Simp Chinese.
   3. If there is non-Chinese subtitle without auto-translation, turn on the first subtitle.
