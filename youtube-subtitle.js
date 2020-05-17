@@ -2,21 +2,25 @@
 // @name               Youtube Subtitle
 // @namespace    https://greasyfork.org
 // @version      1.1.2
-// @description  打开中文字幕，无中文字幕则将第一个字幕自动翻译为简体中文，无自动翻译则使用第一个字幕
+// @description  1. 打开中文字幕。2. 没有中文字幕则将第一个字幕翻译为简体中文。3. 翻译失败则使用第一个字幕。
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @match       https://www.youtube.com/watch?v=*
-// @run-at       document-end
+// @run-at       document-idle
 // ==/UserScript==
 
 /**
-require: none
+require: 
+  Trigger one of the events:
+  1. DOMContentLoaded. That's a general 'document-end/document-idle' event in Greasemonkey and Tampermonkey, happens when open a new tab or refresh an exist tab.
+  2. yt-navigate-finish. That's a special event in www.youtube.com, happens when open link in an exsit tab.
 ensure: 
-  Meet one of the conditions as the following order:
-  1. If there is Chinese subtitle, turn on it.
-  2. If there is non-Chinese subtitle and auto-translation, turn on the first subtitle and translate to Simp Chinese.
-  3. If there is non-Chinese subtitle without auto-translation, turn on the first subtitle.
-  4. If there isn't subtitle, doesn't turn on subtitle.
+  1. Meet one of the conditions as the following order:
+    1. If there is Chinese subtitle, turn on it.
+    2. If there is non-Chinese subtitle and auto-translation, turn on the first subtitle and translate to Simp Chinese.
+    3. If there is non-Chinese subtitle without auto-translation, turn on the first subtitle.
+    4. If there isn't subtitle, doesn't turn on subtitle.
+  2. addEventListener on yt-navigate-finish event.
 */
 'use strict';
 (function youtubeSubtitle() {
@@ -106,7 +110,7 @@ ensure:
     }
   }
 
-  function translateToSimpChinese() {    
+  function translateToSimpChinese() {
     if (translateToSimpChineseCount === MAX_TRANS_TO_SIMP_CHINESE_COUNT) {
       return;
     }
@@ -155,6 +159,6 @@ ensure:
     }
   }
 
-  window.addEventListener('yt-navigate-finish', youtubeSubtitle); // reRun this script if click on youtube link
   onDOMContentLoaded();
+  window.addEventListener('yt-navigate-finish', youtubeSubtitle);
 })();
