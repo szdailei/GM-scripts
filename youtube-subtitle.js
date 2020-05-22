@@ -1,29 +1,25 @@
 // ==UserScript==
 // @name               Youtube Subtitle
 // @namespace    https://greasyfork.org
-// @version      1.1.2
+// @version      1.1.3
 // @description  1. 打开中文字幕。2. 没有中文字幕则将第一个字幕翻译为简体中文。3. 翻译失败则使用第一个字幕。
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @match       https://www.youtube.com/watch?v=*
-// @run-at       document-idle
+// @run-at       document-start
 // ==/UserScript==
 
+'use strict';
 /**
-require: 
-  Trigger one of the events:
-  1. DOMContentLoaded. That's a general 'document-end/document-idle' event in Greasemonkey and Tampermonkey, happens when open a new tab or refresh an exist tab.
-  2. yt-navigate-finish. That's a special event in www.youtube.com, happens when open link in an exsit tab.
+require:  Trigger the event yt-navigate-finish. That's a special event in www.youtube.com, happens when open link in an exsit tab.
 ensure: 
-  1. Meet one of the conditions as the following order:
+  Meet one of the conditions as the following order:
     1. If there is Chinese subtitle, turn on it.
     2. If there is non-Chinese subtitle and auto-translation, turn on the first subtitle and translate to Simp Chinese.
     3. If there is non-Chinese subtitle without auto-translation, turn on the first subtitle.
     4. If there isn't subtitle, doesn't turn on subtitle.
-  2. addEventListener on yt-navigate-finish event.
 */
-'use strict';
-(function youtubeSubtitle() {
+function youtubeSubtitle() {
   var videoLoadCount, subtitleMenuLoadCount, translateToSimpChineseCount;
   videoLoadCount = subtitleMenuLoadCount = translateToSimpChineseCount = 0;
   const MAX_VIDEO_LOAD_COUNT = 10;
@@ -34,7 +30,7 @@ ensure:
   const NON_CHINESE_SUBTITLE = 'Non Chinese Subtitle';
   const ON_SUBTITLE_MENU = 'On Subtitle Menu';
 
-  function onDOMContentLoaded() {
+  function onYtNavigateFinish() {
     if (videoLoadCount === MAX_VIDEO_LOAD_COUNT) {
       return;
     }
@@ -48,7 +44,7 @@ ensure:
       }
     }
     videoLoadCount++;
-    setTimeout(onDOMContentLoaded, 1000);
+    setTimeout(onYtNavigateFinish, 1000);
   }
 
   function onVideoPlayed() {
@@ -158,7 +154,14 @@ ensure:
       }
     }
   }
+  
+  onYtNavigateFinish();
+}
 
-  onDOMContentLoaded();
+/**
+require:  The document is still loading
+ensure:  addEventListener on yt-navigate-finish event.
+*/
+(function () {
   window.addEventListener('yt-navigate-finish', youtubeSubtitle);
 })();
