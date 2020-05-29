@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name        自动进入Youtube剧场模式，双语字幕，记忆播放速度
+// @name        Youtube剧场模式，双语字幕，记忆播放速度
 // @namespace    https://greasyfork.org
-// @version      2.1.5
+// @version      2.2.0
 // @description  自动进入Youtube剧场模式，中文字幕位于播放器下方，解说词位于播放器右下侧。有字幕时，自动记忆设置的播放速度，重新进入Youtube不丢失；无字幕时，不自动调整播放速度。
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
@@ -14,20 +14,17 @@
 require:  Trigger the event yt-navigate-finish. That's a special event in www.youtube.com, happens when open link in an exsit tab.
 ensure: 
     1. Open theater mode.
-    2. If the video is not played, or no subtitle, exit.
-    3. If there is Chinese subtitle, turn on it, and open transcript.
-    4. If there is non-Chinese subtitle and auto-translation, turn on the first subtitle and translate to Simp Chinese.
-    5. If there is non-Chinese subtitle without auto-translation, turn on the first subtitle.
-    6. If there is transcript, trun on transcript
-    7. If there is subtitle, save and restore play speed.
+    2. If there is subtitle, save and restore play speed.
+    3. If there is Chinese subtitle, turn on it. If no, but with auto-translation, translate to Simp Chinese.
+    4. If there is transcript, trun on transcript.
 */
 function onYtNavigateFinish() {
   const MAX_VIDEO_LOAD_COUNT = 10;
   const MAX_SUBTITLE_MENU_LOAD_COUNT = 10;
   const MAX_VIDEO_PRIMARY_INFO_LOAD_COUNT = 10;
-  const TOO_FAST_COUNT = 2;
+  const MIN_MORE_ACTIONS_MENU_LOAD_COUNT = 2;
   const MAX_MORE_ACTIONS_MENU_LOAD_COUNT = 10;
-  const MAX_OPEN_TRANSCRIPT_COUNT = 10;
+  const MAX_OPEN_TRANSCRIPT_COUNT = 5;
   const PLAY_SPEED_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-subtitle-play-speed';
 
   let ytdPlayer,
@@ -36,9 +33,8 @@ function onYtNavigateFinish() {
     playSpeedButton,
     subtitlesSelectButton,
     ytdVideoPrimaryInfo,
-    moreActionsButton;
-  let playerSizeChanged, moreActionsMenuLoadTooFast;
-  playerSizeChanged = moreActionsMenuLoadTooFast = false;
+    openTranscriptButton;
+  let playerSizeChanged = false;
   let videoLoadCount, subtitleMenuLoadCount, videoPrimaryInfoLoadCount, moreActionsMenuLoadCount, openTranscriptCount;
   videoLoadCount = subtitleMenuLoadCount = videoPrimaryInfoLoadCount = moreActionsMenuLoadCount = openTranscriptCount = 0;
 
@@ -56,13 +52,9 @@ function onYtNavigateFinish() {
     ytdPlayer = document.getElementById('ytd-player');
     if (ytdPlayer !== null) {
       let videos = ytdPlayer.getElementsByTagName('video');
-      if (videos !== null) {
-        let video = videos.item(0);
-        if (video !== null) {
-          video.play();
-          onVideoPlayed();
-          return;
-        }
+      if (videos !== null && videos.length > 0 && videos.item(0) !== null) {
+        onVideoPlayed();
+        return;
       }
     }
     videoLoadCount++;
@@ -86,12 +78,12 @@ function onYtNavigateFinish() {
       '字幕 (c)'
     );
     if (subtitlesEnableButton !== null) {
-      let pressed = subtitlesEnableButton.getAttribute('aria-pressed');
-      if (pressed === 'true') {
-        onSubtitlesMenuLoaded();
+      if (subtitlesEnableButton.style.display === 'none') {
         return;
       }
-      subtitlesEnableButton.click();
+      if (subtitlesEnableButton.getAttribute('aria-pressed') === 'false') {
+        subtitlesEnableButton.click();
+      }
       onSubtitlesMenuLoaded();
       return;
     }
@@ -114,7 +106,7 @@ function onYtNavigateFinish() {
     settingsButton.click();
 
     playSpeedButton = getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem-label', '播放速度');
-    subtitlesSelectButton = getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem-label', '字幕', false);
+    subtitlesSelectButton = getElementByClassNameAndPartInnerText(ytdPlayer, 'ytp-menuitem-label', '字幕');
 
     listenPlaySpeedButtonClickAndRestoretPlaySpeed();
     turnOnSubtitle();
@@ -131,10 +123,10 @@ function onYtNavigateFinish() {
       return;
     }
 
-    const exactMatch = true;
-    let result = getMenuItemRadio(playSpeedInLocalStorage, exactMatch);
-    if (Array.isArray(result) === false) {
-      result.click();
+    let radio = getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem', playSpeedInLocalStorage);
+    if (radio !== null) {
+      radio.click();
+      return;
     }
     settingsButton.click();
   }
@@ -155,52 +147,22 @@ function onYtNavigateFinish() {
   function turnOnSubtitle() {
     settingsButton.click();
     subtitlesSelectButton.click();
-    let result = getMenuItemRadio('中文');
-    if (Array.isArray(result) === false) {
-      // turn on Chinese subtitle
-      result.click();
+    let radio = getElementByClassNameAndPartInnerText(ytdPlayer, 'ytp-menuitem', '中文');
+    if (radio !== null) {
+      radio.click();
       settingsButton.click();
       turnOnTranscript();
       return;
     }
 
-    if (result.includes('自动翻译') === true) {
-      getMenuItemRadio('自动翻译').click();
-      getMenuItemRadio('中文（简体）').click();
+    radio = getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem', '自动翻译');
+    if (radio !== null) {
+      radio.click();
+      getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem', '中文（简体）').click();
       turnOnTranscript();
-      return;
-    }
-
-    let length = result.length;
-    for (let i = 0; i < length; i++) {
-      let radioName = result[i];
-      if (radioName.indexOf('添加字幕') !== -1 || radioName.indexOf('关闭') !== -1) {
-        continue;
-      }
-      // turn on the first subtitle (Non-Chinese)
-      getMenuItemRadio(radioName).click();
-      settingsButton.click();
       return;
     }
     settingsButton.click();
-  }
-
-  function getMenuItemRadio(radioName, exactMatch) {
-    let menuItemRadioNames = [];
-    let menuItemRadios = ytdPlayer.querySelectorAll('[role="menuitemradio"]');
-    let length = menuItemRadios.length;
-    for (let i = length - 1; i > -1; i--) {
-      let innerText = menuItemRadios[i].innerText;
-      if (exactMatch === true) {
-        if (innerText === radioName) {
-          return menuItemRadios[i];
-        }
-      } else if (innerText.indexOf(radioName) !== -1) {
-        return menuItemRadios[i];
-      }
-      menuItemRadioNames.push(innerText);
-    }
-    return menuItemRadioNames;
   }
 
   function turnOnTranscript() {
@@ -210,10 +172,12 @@ function onYtNavigateFinish() {
     let ytdVideoPrimaryInfos = document.getElementsByTagName('ytd-video-primary-info-renderer');
     if (ytdVideoPrimaryInfos !== null && ytdVideoPrimaryInfos.length > 0) {
       ytdVideoPrimaryInfo = ytdVideoPrimaryInfos[0];
-      if (videoPrimaryInfoLoadCount <= TOO_FAST_COUNT) {
-        moreActionsMenuLoadTooFast = true;
+      let time = MIN_MORE_ACTIONS_MENU_LOAD_COUNT - videoPrimaryInfoLoadCount;
+      if (time > 0) {
+        setTimeout(enterMoreActionsMenu, 1000 * time);
+      } else {
+        enterMoreActionsMenu;
       }
-      enterMoreActionsMenu();
       return;
     }
     videoPrimaryInfoLoadCount++;
@@ -221,25 +185,18 @@ function onYtNavigateFinish() {
   }
 
   function enterMoreActionsMenu() {
-    const maxCount = moreActionsMenuLoadTooFast
-      ? MAX_MORE_ACTIONS_MENU_LOAD_COUNT + TOO_FAST_COUNT
-      : MAX_MORE_ACTIONS_MENU_LOAD_COUNT;
-    if (moreActionsMenuLoadCount >= maxCount) {
+    if (moreActionsMenuLoadCount >= MAX_MORE_ACTIONS_MENU_LOAD_COUNT) {
       return;
     }
 
-    if (moreActionsMenuLoadTooFast === false || moreActionsMenuLoadCount >= TOO_FAST_COUNT) {
-      let iconButtons = ytdVideoPrimaryInfo.getElementsByClassName('yt-icon-button');
-      if (iconButtons !== null) {
-        let length = iconButtons.length;
-        for (let i = 0; i < length; i++) {
-          if (iconButtons[i].getAttribute('aria-label') === '其他操作') {
-            moreActionsButton = iconButtons[i];
-            moreActionsButton.click();
-            openTranscript();
-            setTimeout(closeMoreActionsMenu, 1000);
-            return;
-          }
+    let iconButtons = ytdVideoPrimaryInfo.getElementsByClassName('yt-icon-button');
+    if (iconButtons !== null) {
+      let length = iconButtons.length;
+      for (let i = 0; i < length; i++) {
+        if (iconButtons[i].getAttribute('aria-label') === '其他操作') {
+          iconButtons[i].click();
+          openTranscript();
+          return;
         }
       }
     }
@@ -253,41 +210,30 @@ function onYtNavigateFinish() {
     }
 
     let menuPopupRenderers = document.getElementsByTagName('ytd-menu-popup-renderer');
-    if (menuPopupRenderers !== null && menuPopupRenderers.length > 0) {
+    if (menuPopupRenderers !== null) {
       let length = menuPopupRenderers.length;
       for (let i = 0; i < length; i++) {
-        let formattedStrings = menuPopupRenderers[i].getElementsByTagName('yt-formatted-string');
-        let formattedStringsLength = formattedStrings.length;
-        for (let j = 0; j < formattedStringsLength; j++) {
-          if (formattedStrings[j].innerText === '打开解说词') {
-            // open transcript
-            formattedStrings[j].click();
-            if (moreActionsMenuLoadTooFast === false) {
-              return;
-            }
-          }
+        openTranscriptButton = getElementByTagNameAndInnerText(
+          menuPopupRenderers[i],
+          'yt-formatted-string',
+          '打开解说词'
+        );
+        if (openTranscriptButton !== null) {
+          openTranscriptButton.click();
+          setTimeout(closeMoreActionsMenu, 300);
+          return;
         }
       }
     }
+
     openTranscriptCount++;
     setTimeout(openTranscript, 1000);
   }
 
   function closeMoreActionsMenu() {
-    let menuPopupRenderers = document.getElementsByTagName('ytd-menu-popup-renderer');
-    if (menuPopupRenderers !== null && menuPopupRenderers.length > 0) {
-      let length = menuPopupRenderers.length;
-      for (let i = 0; i < length; i++) {
-        let formattedStrings = menuPopupRenderers[i].getElementsByTagName('yt-formatted-string');
-        let formattedStringsLength = formattedStrings.length;
-        for (let j = 0; j < formattedStringsLength; j++) {
-          if (formattedStrings[j].innerText === '举报') {
-            // more actions menu opend, click the more actions button to close menu
-            moreActionsButton.click();
-          }
-        }
-      }
-    }
+    //click openTranscriptButton again to close the more actions menu
+    openTranscriptButton.click();
+    return;
   }
 
   function getElementByClassNameAndAttribute(element, className, attributeName, attributeValue) {
@@ -303,20 +249,39 @@ function onYtNavigateFinish() {
     return null;
   }
 
-  function getElementByClassNameAndInnerText(element, className, innerText, exactMatch) {
+  function getElementByClassNameAndInnerText(element, className, innerText) {
     let results = element.getElementsByClassName(className);
     if (results !== null) {
       let length = results.length;
       for (let i = 0; i < length; i++) {
-        if (exactMatch === undefined || exactMatch === true) {
-          if (results[i].innerText === innerText) {
-            return results[i];
-          }
+        if (results[i].innerText === innerText) {
+          return results[i];
         }
-        if (exactMatch === false) {
-          if (results[i].innerText.indexOf(innerText) !== -1) {
-            return results[i];
-          }
+      }
+    }
+    return null;
+  }
+
+  function getElementByClassNameAndPartInnerText(element, className, innerText) {
+    let results = element.getElementsByClassName(className);
+    if (results !== null) {
+      let length = results.length;
+      for (let i = 0; i < length; i++) {
+        if (results[i].innerText.indexOf(innerText) !== -1) {
+          return results[i];
+        }
+      }
+    }
+    return null;
+  }
+
+  function getElementByTagNameAndInnerText(element, tagName, innerText) {
+    let results = element.getElementsByTagName(tagName);
+    if (results !== null) {
+      let length = results.length;
+      for (let i = 0; i < length; i++) {
+        if (results[i].innerText === innerText) {
+          return results[i];
         }
       }
     }
