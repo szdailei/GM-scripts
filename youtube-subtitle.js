@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name        Youtube双语字幕，下载解说词，剧场模式，记忆播放速度
+// @name        Youtube双语字幕/下载解说词/记忆播放速度
 // @namespace    https://greasyfork.org
-// @version      2.3.0
-// @description  自动进入Youtube剧场模式，中文字幕位于播放器下方，解说词位于播放器右下侧，有按钮下载解说词。有字幕时，自动记忆设置的播放速度，重新进入Youtube不丢失；无字幕时，不自动调整播放速度。
+// @version      2.3.1
+// @description  自动打开中文字幕和解说词，有按钮下载解说词。有字幕时，自动记忆设置的播放速度，重新进入Youtube不丢失；无字幕时，不自动调整播放速度。
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @match       https://www.youtube.com/*
@@ -33,9 +33,9 @@ function onYtNavigateFinish() {
     playSpeedButton,
     subtitlesSelectButton,
     ytdVideoPrimaryInfo,
+    moreActionsMenuButton,
     openTranscriptButton,
     secondaryInner;
-  let playerSizeChanged = false;
   let videoLoadCount, subtitleMenuLoadCount, videoPrimaryInfoLoadCount, moreActionsMenuLoadCount, openTranscriptCount;
   videoLoadCount = subtitleMenuLoadCount = videoPrimaryInfoLoadCount = moreActionsMenuLoadCount = openTranscriptCount = 0;
 
@@ -67,11 +67,6 @@ function onYtNavigateFinish() {
       return;
     }
 
-    if (playerSizeChanged === false) {
-      setPlayerFullSize();
-      playerSizeChanged = true;
-    }
-
     subtitlesEnableButton = getElementByClassNameAndAttribute(
       ytdPlayer,
       'ytp-subtitles-button',
@@ -90,16 +85,6 @@ function onYtNavigateFinish() {
     }
     subtitleMenuLoadCount++;
     setTimeout(onVideoPlayed, 1000);
-  }
-
-  function setPlayerFullSize() {
-    let sizeButtons = ytdPlayer.getElementsByClassName('ytp-size-button');
-    if (sizeButtons !== null && sizeButtons.length === 1) {
-      let sizeButton = sizeButtons[0];
-      if (sizeButton.title.indexOf('剧场模式') !== -1) {
-        sizeButton.click();
-      }
-    }
   }
 
   function onSubtitlesMenuLoaded() {
@@ -195,7 +180,8 @@ function onYtNavigateFinish() {
       let length = iconButtons.length;
       for (let i = 0; i < length; i++) {
         if (iconButtons[i].getAttribute('aria-label') === '其他操作') {
-          iconButtons[i].click();
+          moreActionsMenuButton = iconButtons[i];
+          moreActionsMenuButton.click();
           openTranscript();
           return;
         }
@@ -211,6 +197,7 @@ function onYtNavigateFinish() {
     }
 
     let menuPopupRenderers = document.getElementsByTagName('ytd-menu-popup-renderer');
+
     if (menuPopupRenderers !== null) {
       let length = menuPopupRenderers.length;
       for (let i = 0; i < length; i++) {
@@ -221,8 +208,16 @@ function onYtNavigateFinish() {
         );
         if (openTranscriptButton !== null) {
           openTranscriptButton.click();
-          setTimeout(closeMoreActionsMenu, 300);
+          //click openTranscriptButton again to close the more actions menu
+          setTimeout(clickOpenTranscriptButton, 300);
           setTimeout(addScriptDownloadButton, 500);
+          return;
+        }
+
+        let reportButton = getElementByTagNameAndInnerText(menuPopupRenderers[i], 'yt-formatted-string', '举报');
+        // more actions menu opend without '打开解说词' button, click more actions menu button to close it.
+        if (reportButton !== null) {
+          moreActionsMenuButton.click();
           return;
         }
       }
@@ -232,8 +227,7 @@ function onYtNavigateFinish() {
     setTimeout(openTranscript, 1000);
   }
 
-  function closeMoreActionsMenu() {
-    //click openTranscriptButton again to close the more actions menu
+  function clickOpenTranscriptButton() {
     openTranscriptButton.click();
     return;
   }
