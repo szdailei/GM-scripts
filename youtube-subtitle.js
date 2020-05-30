@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name        Youtube剧场模式，双语字幕，记忆播放速度
+// @name        Youtube双语字幕，下载解说词，剧场模式，记忆播放速度
 // @namespace    https://greasyfork.org
-// @version      2.2.0
-// @description  自动进入Youtube剧场模式，中文字幕位于播放器下方，解说词位于播放器右下侧。有字幕时，自动记忆设置的播放速度，重新进入Youtube不丢失；无字幕时，不自动调整播放速度。
+// @version      2.3.0
+// @description  自动进入Youtube剧场模式，中文字幕位于播放器下方，解说词位于播放器右下侧，有按钮下载解说词。有字幕时，自动记忆设置的播放速度，重新进入Youtube不丢失；无字幕时，不自动调整播放速度。
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @match       https://www.youtube.com/*
@@ -11,10 +11,10 @@
 
 'use strict';
 /**
-require:  Trigger the event yt-navigate-finish. That's a special event in www.youtube.com, happens when open link in an exsit tab.
+require:  Trigger the yt-navigate-finish event on www.youtube.com.
 ensure: 
     1. Open theater mode.
-    2. If there is subtitle, save and restore play speed.
+    2. If there is subtitle enable button, enable subtitle, save and restore play speed. If no, exit.
     3. If there is Chinese subtitle, turn on it. If no, but with auto-translation, translate to Simp Chinese.
     4. If there is transcript, trun on transcript.
 */
@@ -33,7 +33,8 @@ function onYtNavigateFinish() {
     playSpeedButton,
     subtitlesSelectButton,
     ytdVideoPrimaryInfo,
-    openTranscriptButton;
+    openTranscriptButton,
+    secondaryInner;
   let playerSizeChanged = false;
   let videoLoadCount, subtitleMenuLoadCount, videoPrimaryInfoLoadCount, moreActionsMenuLoadCount, openTranscriptCount;
   videoLoadCount = subtitleMenuLoadCount = videoPrimaryInfoLoadCount = moreActionsMenuLoadCount = openTranscriptCount = 0;
@@ -221,6 +222,7 @@ function onYtNavigateFinish() {
         if (openTranscriptButton !== null) {
           openTranscriptButton.click();
           setTimeout(closeMoreActionsMenu, 300);
+          setTimeout(addScriptDownloadButton, 500);
           return;
         }
       }
@@ -234,6 +236,93 @@ function onYtNavigateFinish() {
     //click openTranscriptButton again to close the more actions menu
     openTranscriptButton.click();
     return;
+  }
+
+  function addScriptDownloadButton() {
+    secondaryInner = document.getElementById('secondary-inner');
+    if (secondaryInner !== null) {
+      let headerRenderers = secondaryInner.getElementsByTagName('ytd-engagement-panel-title-header-renderer');
+      if (headerRenderers !== null && headerRenderers.length === 1) {
+        let menu = headerRenderers[0].querySelector('#menu');
+        if (menu !== null) {
+          let checkResult = hasScriptDownloadButton(menu);
+          if (checkResult === true) {
+            return;
+          }
+          let scriptDownloadButton = createScriptDownloadButton();
+          menu.parentNode.insertBefore(scriptDownloadButton, menu);
+        }
+      }
+    }
+  }
+
+  function hasScriptDownloadButton(menu) {
+    let previousElementSibling = menu.previousElementSibling;
+    if (previousElementSibling !== null && previousElementSibling.innerText === '下载解说词') {
+      return true;
+    }
+    return false;
+  }
+
+  function createScriptDownloadButton() {
+    let scriptDownloadButton = document.createElement('paper-button');
+    scriptDownloadButton.className = 'style-scope ytd-subscribe-button-renderer';
+    scriptDownloadButton.innerHTML = '下载解说词';
+    scriptDownloadButton.addEventListener('click', scriptDownload);
+    return scriptDownloadButton;
+  }
+
+  function scriptDownload() {
+    let titles = ytdVideoPrimaryInfo.getElementsByClassName('title');
+    if (titles === null || titles.length !== 1) {
+      return;
+    }
+    let filename = titles[0].innerText + '.srt';
+
+    let transcriptBodyRenderer = secondaryInner.getElementsByTagName('ytd-transcript-body-renderer');
+    if (transcriptBodyRenderer === null || transcriptBodyRenderer.length !== 1) {
+      return;
+    }
+    let transcriptBodys = transcriptBodyRenderer[0].getElementsByClassName('cue-group');
+    let script = '';
+    let length = transcriptBodys.length;
+    for (let i = 0; i < length; i++) {
+      let currentInnerText = transcriptBodys[i].innerText;
+      let currentNewLinePostion = currentInnerText.indexOf('\n');
+      let startTime = currentInnerText.substr(0, currentNewLinePostion);
+
+      let endTime;
+      if (i === length - 1) {
+        endTime = getLastSubtitleEndTime(startTime);
+      } else {
+        let nextInnerText = transcriptBodys[i + 1].innerText;
+        let nextNewLinePostion = nextInnerText.indexOf('\n');
+        endTime = nextInnerText.substr(0, nextNewLinePostion);
+      }
+
+      let serialNumberLine = i + 1 + '\n';
+      let timeLine = '00:' + startTime + ',000' + '  --> ' + '00:' + endTime + ',000' + '\n';
+      let contentLine = currentInnerText.substr(currentNewLinePostion + 1);
+      let newLine = '\n';
+
+      script = script + serialNumberLine + timeLine + contentLine + newLine + '\n';
+    }
+    saveTextAsFile(filename, script);
+  }
+
+  function getLastSubtitleEndTime(startTime) {
+    // assume 2 minutes long of the last subtitle
+    let startTimes = startTime.split(':');
+    let minuteNumber = parseInt(startTimes[0]) + 2;
+    let endTime = minuteNumber.toString() + ':' + startTimes[1];
+    return endTime;
+  }
+
+  function saveTextAsFile(filename, text) {
+    let a = document.createElement('a');
+    a.href = 'data:text/txt;charset=utf-8,' + encodeURIComponent(text);
+    a.download = filename;
+    a.click();
   }
 
   function getElementByClassNameAndAttribute(element, className, attributeName, attributeValue) {
