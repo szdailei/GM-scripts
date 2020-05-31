@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name        Youtube双语字幕/下载解说词/记忆播放速度
+// @name        Youtube双语字幕-下载解说词-记忆播放速度
 // @namespace    https://greasyfork.org
-// @version      2.3.1
-// @description  自动打开中文字幕和解说词，有按钮下载解说词。有字幕时，自动记忆设置的播放速度，重新进入Youtube不丢失；无字幕时，不自动调整播放速度。
+// @version      2.3.2
+// @description  自动打开中文字幕和解说词。解说词可选择语言并下载。有字幕时，自动记忆设置的播放速度，重新进入Youtube不丢失；无字幕时，不自动调整播放速度。
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @match       https://www.youtube.com/*
@@ -35,7 +35,7 @@ function onYtNavigateFinish() {
     ytdVideoPrimaryInfo,
     moreActionsMenuButton,
     openTranscriptButton,
-    secondaryInner;
+    panels;
   let videoLoadCount, subtitleMenuLoadCount, videoPrimaryInfoLoadCount, moreActionsMenuLoadCount, openTranscriptCount;
   videoLoadCount = subtitleMenuLoadCount = videoPrimaryInfoLoadCount = moreActionsMenuLoadCount = openTranscriptCount = 0;
 
@@ -119,9 +119,8 @@ function onYtNavigateFinish() {
 
   function listenPlaySpeedButtonClick() {
     let menuItemRadios = ytdPlayer.querySelectorAll('[role="menuitemradio"]');
-    let length = menuItemRadios.length;
-    for (let i = 0; i < length; i++) {
-      menuItemRadios[i].addEventListener('click', savePlaySpeed);
+    for (let radio of menuItemRadios) {
+      radio.addEventListener('click', savePlaySpeed);
     }
   }
 
@@ -207,7 +206,7 @@ function onYtNavigateFinish() {
           '打开解说词'
         );
         if (openTranscriptButton !== null) {
-          openTranscriptButton.click();
+          clickOpenTranscriptButton();
           //click openTranscriptButton again to close the more actions menu
           setTimeout(clickOpenTranscriptButton, 300);
           setTimeout(addScriptDownloadButton, 500);
@@ -233,19 +232,16 @@ function onYtNavigateFinish() {
   }
 
   function addScriptDownloadButton() {
-    secondaryInner = document.getElementById('secondary-inner');
-    if (secondaryInner !== null) {
-      let headerRenderers = secondaryInner.getElementsByTagName('ytd-engagement-panel-title-header-renderer');
-      if (headerRenderers !== null && headerRenderers.length === 1) {
-        let menu = headerRenderers[0].querySelector('#menu');
-        if (menu !== null) {
-          let checkResult = hasScriptDownloadButton(menu);
-          if (checkResult === true) {
-            return;
-          }
-          let scriptDownloadButton = createScriptDownloadButton();
-          menu.parentNode.insertBefore(scriptDownloadButton, menu);
+    panels = document.getElementById('panels');
+    if (panels !== null) {
+      let menu = panels.querySelector('#menu');
+      if (menu !== null) {
+        let checkResult = hasScriptDownloadButton(menu);
+        if (checkResult === true) {
+          return;
         }
+        let scriptDownloadButton = createScriptDownloadButton();
+        menu.parentNode.insertBefore(scriptDownloadButton, menu);
       }
     }
   }
@@ -267,17 +263,22 @@ function onYtNavigateFinish() {
   }
 
   function scriptDownload() {
-    let titles = ytdVideoPrimaryInfo.getElementsByClassName('title');
+    let titles = ytdVideoPrimaryInfo.getElementsByTagName('h1');
     if (titles === null || titles.length !== 1) {
       return;
     }
     let filename = titles[0].innerText + '.srt';
 
-    let transcriptBodyRenderer = secondaryInner.getElementsByTagName('ytd-transcript-body-renderer');
+    /*
+    let transcriptBodyRenderer = panels.getElementsByTagName('ytd-transcript-body-renderer');
     if (transcriptBodyRenderer === null || transcriptBodyRenderer.length !== 1) {
       return;
     }
-    let transcriptBodys = transcriptBodyRenderer[0].getElementsByClassName('cue-group');
+    */
+    let transcriptBodys = panels.getElementsByClassName('cue-group');
+    if (transcriptBodys === null) {
+      return;
+    }
     let script = '';
     let length = transcriptBodys.length;
     for (let i = 0; i < length; i++) {
