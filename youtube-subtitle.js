@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Youtube双语字幕-下载解说词-记忆播放速度
 // @namespace    https://greasyfork.org
-// @version      2.3.4
+// @version      2.3.5
 // @description  自动打开中文字幕和解说词。解说词可选择语言并下载。有字幕时，自动记忆设置的播放速度，重新进入Youtube不丢失；无字幕时，不自动调整播放速度。
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
@@ -26,344 +26,133 @@ ensure:
     4. If there is transcript, trun on transcript.
 */
   function onYtNavigateFinish() {
-    const TIMER = 100;
-    const MAX_VIDEO_LOAD_COUNT = 100;
-    const MAX_SUBTITLES_ENABLE_COUNT = 100;
-    const MAX_SETTINGS_MENU_LOAD_COUNT = 30;
-    const MAX_SUBTITLE_MENU_LOAD_COUNT = 30;
-    const MAX_TRANS_TO_SIMP_CHINESES_COUNT = 30;
-    const MAX_PLAY_SPEED_MENU_LOAD_COUNT = 30;
-    const MAX_VIDEO_PRIMARY_INFO_LOAD_COUNT = 100;
-    const MIN_MORE_ACTIONS_MENU_LOAD_COUNT = 10;
-    const MAX_MORE_ACTIONS_MENU_LOAD_COUNT = 30;
-    const MAX_OPEN_TRANSCRIPT_COUNT = 30;
-    const PLAY_SPEED_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-subtitle-play-speed';
-
-    let ytdPlayer,
-      subtitlesEnableButton,
-      settingsButton,
-      playSpeedButton,
-      subtitlesSelectButton,
-      ytdVideoPrimaryInfo,
-      moreActionsMenuButton,
-      openTranscriptButton,
-      panels;
-    let videoLoadCount,
-      subtitlesEnableCount,
-      settingsMenuLoadCount,
-      subtitleMenuLoadCount,
-      transToSimpChineseCount,
-      playSpeedMenuLoadCount,
-      videoPrimaryInfoLoadCount,
-      moreActionsMenuLoadCount,
-      openTranscriptCount;
-    videoLoadCount = subtitlesEnableCount = settingsMenuLoadCount = subtitleMenuLoadCount = transToSimpChineseCount = playSpeedMenuLoadCount = videoPrimaryInfoLoadCount = moreActionsMenuLoadCount = openTranscriptCount = 0;
-
     if (window.location.pathname.indexOf('/watch') === -1) {
       return;
     }
-
     // config on https://www.youtube.com/watch?*
     youtubeConfig();
+  }
 
-    function youtubeConfig() {
-      if (videoLoadCount >= MAX_VIDEO_LOAD_COUNT) {
-        return;
-      }
-      ytdPlayer = document.getElementById('ytd-player');
-      if (ytdPlayer !== null) {
-        let videos = ytdPlayer.getElementsByTagName('video');
-        if (videos !== null && videos.length > 0 && videos.item(0) !== null) {
-          onVideoPlayed();
-          return;
-        }
-      }
-      videoLoadCount++;
-      setTimeout(youtubeConfig, TIMER);
+  async function youtubeConfig() {
+    let titles, panels;
+    let ytdPlayer = await waitUntil(document.getElementById('ytd-player'));
+    await waitUntil(ytdPlayer.getElementsByTagName('video'));
+
+    let subtitlesEnableButton = await waitUntil(
+      getElementByClassNameAndAttribute(ytdPlayer, 'ytp-subtitles-button', 'aria-label', '字幕 (c)')
+    );
+    if (subtitlesEnableButton.style.display === 'none') {
+      return;
+    }
+    if (subtitlesEnableButton.getAttribute('aria-pressed') === 'false') {
+      subtitlesEnableButton.click();
     }
 
-    function onVideoPlayed() {
-      if (subtitlesEnableCount >= MAX_SUBTITLES_ENABLE_COUNT) {
-        return;
+    let settingsButton = getElementByClassNameAndAttribute(ytdPlayer, 'ytp-settings-button', 'aria-label', '设置');
+    settingsButton.click();
+
+    let playSpeedButton = await waitUntil(
+      getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem-label', '播放速度')
+    );
+    let subtitlesSelectButton = getElementByClassNameAndPartInnerText(ytdPlayer, 'ytp-menuitem-label', '字幕');
+
+    listenAndRestorePlaySpeed(ytdPlayer, playSpeedButton);
+    subtitlesSelectButton.click();
+    turnOnSubtitle(ytdPlayer, settingsButton);
+    turnOnTranscript();
+
+    async function listenAndRestorePlaySpeed(player, playSpeedButton) {
+      const PLAY_SPEED_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-subtitle-play-speed';
+
+      function savePlaySpeed() {
+        let playSpeed = this.innerText;
+        localStorage.setItem(PLAY_SPEED_LOCAL_STORAGE_KEY, playSpeed);
       }
 
-      subtitlesEnableButton = getElementByClassNameAndAttribute(
-        ytdPlayer,
-        'ytp-subtitles-button',
-        'aria-label',
-        '字幕 (c)'
-      );
-      if (subtitlesEnableButton !== null) {
-        if (subtitlesEnableButton.style.display === 'none') {
-          return;
-        }
-        if (subtitlesEnableButton.getAttribute('aria-pressed') === 'false') {
-          subtitlesEnableButton.click();
-        }
-        onSubtitlesEnabled();
-        return;
-      }
-      subtitlesEnableCount++;
-      setTimeout(onVideoPlayed, TIMER);
-    }
-
-    function onSubtitlesEnabled() {
-      settingsButton = getElementByClassNameAndAttribute(ytdPlayer, 'ytp-settings-button', 'aria-label', '设置');
-      settingsButton.click();
-      onSettingsMenuButtonClicked();
-    }
-
-    function onSettingsMenuButtonClicked() {
-      if (settingsMenuLoadCount >= MAX_SETTINGS_MENU_LOAD_COUNT) {
-        settingsButton.click();
-        return;
-      }
-
-      let radios = ytdPlayer.getElementsByClassName('ytp-menuitem-label');
-      if (radios !== null) {
-        for (let radio of radios) {
-          if (radio.innerText === '播放速度') {
-            playSpeedButton = radio;
-          }
-          if (radio.innerText.indexOf('字幕') !== -1) {
-            subtitlesSelectButton = radio;
-          }
-        }
-
-        if (playSpeedButton !== null && subtitlesSelectButton !== null) {
-          subtitlesSelectButton.click();
-          turnOnSubtitle();
-          return;
-        }
-      }
-
-      settingsMenuLoadCount++;
-      setTimeout(onSettingsMenuButtonClicked, TIMER);
-    }
-
-    function turnOnSubtitle() {
-      if (subtitleMenuLoadCount >= MAX_SUBTITLE_MENU_LOAD_COUNT) {
-        memoryPlaySpeedAndOpenTranscriptAfterSettingsMenuOpended();
-        return;
-      }
-
-      let closeSubtitleButton = getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem', '关闭');
-      if (closeSubtitleButton !== null) {
-        let chineseSubtitleRadio = getElementByClassNameAndPartInnerText(ytdPlayer, 'ytp-menuitem', '中文');
-        if (chineseSubtitleRadio !== null) {
-          chineseSubtitleRadio.click();
-          setTimeout(memoryPlaySpeedAndOpenTranscriptAfterSettingsMenuOpended, TIMER);
-          return;
-        } else {
-          let autoTransRadio = getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem', '自动翻译');
-          if (autoTransRadio !== null) {
-            autoTransRadio.click();
-            setTimeout(onAutoTransRadioClicked, TIMER);
-            return;
-          }
-        }
-      }
-      subtitleMenuLoadCount++;
-      setTimeout(turnOnSubtitle, TIMER);
-    }
-
-    function onAutoTransRadioClicked() {
-      if (transToSimpChineseCount >= MAX_TRANS_TO_SIMP_CHINESES_COUNT) {
-        // No Simp Chinese, fatal error
-        return;
-      }
-
-      let transToSimpChineseRadio = getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem', '中文（简体）');
-      if (transToSimpChineseRadio !== null) {
-        transToSimpChineseRadio.click();
-        setTimeout(memoryPlaySpeedAndOpenTranscriptBeforeSettingsMenuOpended, TIMER);
-        return;
-      }
-      transToSimpChineseCount++;
-      setTimeout(onAutoTransRadioClicked, TIMER);
-    }
-
-    function memoryPlaySpeedAndOpenTranscriptBeforeSettingsMenuOpended() {
-      // Open settings menu
-      settingsButton.click();
-      setTimeout(memoryPlaySpeedAndOpenTranscriptAfterSettingsMenuOpended, TIMER);
-    }
-
-    function memoryPlaySpeedAndOpenTranscriptAfterSettingsMenuOpended() {
       playSpeedButton.click();
-      setTimeout(onPlaySpeedButtonClicked, TIMER);
-    }
+      await waitUntil(getElementByClassNameAndInnerText(player, 'ytp-menuitem', '正常'));
 
-    function onPlaySpeedButtonClicked() {
-      if (playSpeedMenuLoadCount >= MAX_PLAY_SPEED_MENU_LOAD_COUNT) {
-        setTimeout(onPlaySpeedRestored, TIMER);
-        return;
-      }
-
-      let normalSpeedRadio = getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem', '正常');
-      if (normalSpeedRadio !== null) {
-        listenPlaySpeedButtonClick();
-        let playSpeedInLocalStorage = localStorage.getItem(PLAY_SPEED_LOCAL_STORAGE_KEY);
-        if (playSpeedInLocalStorage !== null) {
-          let radio = getElementByClassNameAndInnerText(ytdPlayer, 'ytp-menuitem', playSpeedInLocalStorage);
-          if (radio !== null) {
-            let ariaChecked = radio.getAttribute('aria-checked');
-            if (ariaChecked !== 'true') {
-              // different play speed between playSpeedInLocalStorage and checkedRadio
-              radio.click();
-              setTimeout(onPlaySpeedRestored, TIMER);
-              return;
-            }
-          }
-        }
-        onPlaySpeedRestored();
-        return;
-      }
-
-      playSpeedMenuLoadCount++;
-      setTimeout(onPlaySpeedButtonClicked, TIMER);
-    }
-
-    function onPlaySpeedRestored() {
-      // Close settings menu
-      settingsButton.click();
-      setTimeout(turnOnTranscript, TIMER);
-    }
-
-    function listenPlaySpeedButtonClick() {
-      let menuItemRadios = ytdPlayer.querySelectorAll('[role="menuitemradio"]');
+      let menuItemRadios = player.querySelectorAll('[role="menuitemradio"]');
       for (let radio of menuItemRadios) {
         radio.addEventListener('click', savePlaySpeed);
       }
-    }
 
-    function savePlaySpeed() {
-      let playSpeed = this.innerText;
-      localStorage.setItem(PLAY_SPEED_LOCAL_STORAGE_KEY, playSpeed);
-    }
-
-    function turnOnTranscript() {
-      if (videoPrimaryInfoLoadCount >= MAX_VIDEO_PRIMARY_INFO_LOAD_COUNT) {
-        return;
-      }
-      let ytdVideoPrimaryInfos = document.getElementsByTagName('ytd-video-primary-info-renderer');
-      if (ytdVideoPrimaryInfos !== null && ytdVideoPrimaryInfos.length > 0) {
-        ytdVideoPrimaryInfo = ytdVideoPrimaryInfos[0];
-        let time = MIN_MORE_ACTIONS_MENU_LOAD_COUNT - videoPrimaryInfoLoadCount;
-        if (time > 0) {
-          setTimeout(onYtdVideoPrimaryInfoLoaded, TIMER * time);
-        } else {
-          onYtdVideoPrimaryInfoLoaded();
-        }
-        return;
-      }
-      videoPrimaryInfoLoadCount++;
-      setTimeout(turnOnTranscript, TIMER);
-    }
-
-    function onYtdVideoPrimaryInfoLoaded() {
-      if (moreActionsMenuLoadCount >= MAX_MORE_ACTIONS_MENU_LOAD_COUNT) {
-        return;
-      }
-
-      let iconButtons = ytdVideoPrimaryInfo.getElementsByClassName('yt-icon-button');
-      if (iconButtons !== null) {
-        let length = iconButtons.length;
-        for (let i = 0; i < length; i++) {
-          if (iconButtons[i].getAttribute('aria-label') === '其他操作') {
-            moreActionsMenuButton = iconButtons[i];
-            moreActionsMenuButton.click();
-            setTimeout(openTranscript, TIMER);
-            return;
+      let playSpeedInLocalStorage = localStorage.getItem(PLAY_SPEED_LOCAL_STORAGE_KEY);
+      if (playSpeedInLocalStorage !== null) {
+        let radio = getElementByClassNameAndInnerText(player, 'ytp-menuitem', playSpeedInLocalStorage);
+        if (radio !== null) {
+          let ariaChecked = radio.getAttribute('aria-checked');
+          if (ariaChecked !== 'true') {
+            // different play speed between playSpeedInLocalStorage and checkedRadio
+            radio.click();
           }
         }
       }
-      moreActionsMenuLoadCount++;
-      setTimeout(onYtdVideoPrimaryInfoLoaded, TIMER);
     }
 
-    function openTranscript() {
-      if (openTranscriptCount >= MAX_OPEN_TRANSCRIPT_COUNT) {
-        // Close more actions menu button.
+    async function turnOnSubtitle(player, settingsButton) {
+      let closeSubtitleRadio = await waitUntil(getElementByClassNameAndInnerText(player, 'ytp-menuitem', '关闭'));
+      let subtitleMenu = closeSubtitleRadio.parentElement;
+      let chineseSubtitleRadio = getElementByClassNameAndPartInnerText(subtitleMenu, 'ytp-menuitem', '中文');
+      if (chineseSubtitleRadio !== null) {
+        chineseSubtitleRadio.click();
+        settingsButton.click();
+      } else {
+        let autoTransRadio = getElementByClassNameAndInnerText(subtitleMenu, 'ytp-menuitem', '自动翻译');
+        if (autoTransRadio !== null) {
+          autoTransRadio.click();
+          let transToSimpChineseRadio = await waitUntil(
+            getElementByClassNameAndInnerText(player, 'ytp-menuitem', '中文（简体）')
+          );
+          transToSimpChineseRadio.click();
+        }
+      }
+    }
+
+    async function turnOnTranscript() {
+      let ytdVideoPrimaryInfos = await waitUntil(document.getElementsByTagName('ytd-video-primary-info-renderer'));
+      let ytdVideoPrimaryInfo = ytdVideoPrimaryInfos[0];
+      titles = ytdVideoPrimaryInfo.getElementsByTagName('h1');
+
+      let moreActionsMenuButton = await waitUntil(
+        getElementByClassNameAndAttribute(ytdVideoPrimaryInfo, 'yt-icon-button', 'aria-label', '其他操作')
+      );
+      moreActionsMenuButton.click();
+
+      let menuPopupRenderers = await waitUntil(document.getElementsByTagName('ytd-menu-popup-renderer'));
+      let items = menuPopupRenderers[0].querySelector('#items');
+      let openTranscriptButton = getElementByTagNameAndInnerText(items, 'yt-formatted-string', '打开解说词');
+      if (openTranscriptButton === null) {
+        // no '打开解说词' button, close more actions menu button.
         moreActionsMenuButton.click();
         return;
       }
 
-      let menuPopupRenderers = document.getElementsByTagName('ytd-menu-popup-renderer');
-      if (menuPopupRenderers !== null) {
-        let items = menuPopupRenderers[0].querySelector('#items');
-        if (items !== null) {
-          let reportButton = getElementByTagNameAndInnerText(items, 'yt-formatted-string', '举报');
-          if (reportButton !== null) {
-            openTranscriptButton = getElementByTagNameAndInnerText(items, 'yt-formatted-string', '打开解说词');
-            if (openTranscriptButton !== null) {
-              openTranscriptButton.click();
-              setTimeout(addTranscriptDownloadButton, TIMER);
-              return;
-            }
-            // There is '举报' botton, but no '打开解说词' button, close more actions menu button.
-            moreActionsMenuButton.click();
-            return;
-          }
-        }
-      }
-
-      openTranscriptCount++;
-      setTimeout(openTranscript, TIMER);
-    }
-
-    function clickOpenTranscriptButton() {
       openTranscriptButton.click();
-      return;
+      panels = await waitUntil(document.getElementById('panels'));
+      addTranscriptDownloadButton();
     }
 
     function addTranscriptDownloadButton() {
-      panels = document.getElementById('panels');
-      if (panels !== null) {
-        let menu = panels.querySelector('#menu');
-        if (menu !== null) {
-          let checkResult = hasScriptDownloadButton(menu);
-          if (checkResult === true) {
-            setTimeout(clickOpenTranscriptButton, TIMER);
-            return;
-          }
-          let scriptDownloadButton = createScriptDownloadButton();
-          menu.parentNode.insertBefore(scriptDownloadButton, menu);
-        }
-      }
-      //click openTranscriptButton again to close the more actions menu
-      setTimeout(clickOpenTranscriptButton, TIMER);
-    }
-
-    function hasScriptDownloadButton(menu) {
+      let menu = panels.querySelector('#menu');
       let previousElementSibling = menu.previousElementSibling;
       if (previousElementSibling !== null && previousElementSibling.innerText === '下载解说词') {
-        return true;
+        return;
       }
-      return false;
+      let scriptDownloadButton = createScriptDownloadButton();
+      menu.parentNode.insertBefore(scriptDownloadButton, menu);
     }
 
     function createScriptDownloadButton() {
       let scriptDownloadButton = document.createElement('paper-button');
       scriptDownloadButton.className = 'style-scope ytd-subscribe-button-renderer';
       scriptDownloadButton.innerHTML = '下载解说词';
-      scriptDownloadButton.addEventListener('click', scriptDownload);
+      scriptDownloadButton.addEventListener('click', onScriptDownloadButtonClick);
       return scriptDownloadButton;
     }
 
-    function scriptDownload() {
-      let titles = ytdVideoPrimaryInfo.getElementsByTagName('h1');
-      if (titles === null || titles.length !== 1) {
-        return;
-      }
+    function onScriptDownloadButtonClick() {
       let filename = titles[0].innerText + '.srt';
-
-      /*
-    let transcriptBodyRenderer = panels.getElementsByTagName('ytd-transcript-body-renderer');
-    if (transcriptBodyRenderer === null || transcriptBodyRenderer.length !== 1) {
-      return;
-    }
-    */
       let transcriptBodys = panels.getElementsByClassName('cue-group');
       if (transcriptBodys === null) {
         return;
@@ -459,6 +248,19 @@ ensure:
         }
       }
       return null;
+    }
+
+    async function waitUntil(condition) {
+      return await new Promise((resolve) => {
+        const interval = setInterval(() => {
+          let result = condition;
+          if (result !== null) {
+            clearInterval(interval);
+            resolve(result);
+            return;
+          }
+        }, 100);
+      });
     }
   }
 
