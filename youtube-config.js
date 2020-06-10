@@ -36,7 +36,7 @@ ensure:
     3. If there is transcript, trun on transcript.
 */
   async function youtubeConfig() {
-    if ((await hasSubtitles()) === false) {
+    if ((await isSubtitleEabled()) === false) {
       return;
     }
     settingsButton.addEventListener('click', onRadioClicked);
@@ -45,11 +45,15 @@ ensure:
     ytpPopup = await waitUntil(document.getElementById('ytp-id-20'));
     let settingsMenu = await waitUntil(getPanelMenuByTitle(''));
 
-    await restoreSettings(settingsMenu, i18n.t('playSpeed'), getStorage(i18n.t('playSpeed')));
+    await restoreSettingOfMenu(settingsMenu, i18n.t('playSpeed'), getStorage(i18n.t('playSpeed')));
 
-    let hasRestoredSubtitle = await restoreSettings(settingsMenu, i18n.t('subtitles'), getStorage(i18n.t('subtitles')));
+    let isSubtitlRestored = await restoreSettingOfMenu(
+      settingsMenu,
+      i18n.t('subtitles'),
+      getStorage(i18n.t('subtitles'))
+    );
 
-    if (hasRestoredSubtitle === false) {
+    if (isSubtitlRestored === false) {
       let subtitlesRadio = getElementByClassNameAndShortTextContent(
         settingsMenu,
         'ytp-menuitem-label',
@@ -57,12 +61,12 @@ ensure:
       );
       subtitlesRadio.click();
       let subtitleMenu = await waitUntil(getPanelMenuByTitle(i18n.t('subtitles')));
-      let hasRestoredAutoTransSubtitle = await restoreSettings(
+      let isAutoTransSubtitleRestored = await restoreSettingOfMenu(
         subtitleMenu,
         i18n.t('autoTranlate'),
-        getStorage(i18n.t('subtitles'))
+        getStorage(i18n.t('autoTranlate'))
       );
-      if (hasRestoredAutoTransSubtitle === false) {
+      if (isAutoTransSubtitleRestored === false) {
         settingsButton.click(); // close settings menu
       }
     } else {
@@ -72,7 +76,7 @@ ensure:
     await turnOnTranscript();
   }
 
-  async function hasSubtitles() {
+  async function isSubtitleEabled() {
     let player = await waitUntil(document.getElementById('movie_player'));
     let rightControls = await waitUntil(player.getElementsByClassName('ytp-right-controls'));
     let rightControl = rightControls[0];
@@ -93,14 +97,14 @@ ensure:
     return true;
   }
 
-  async function restoreSettings(panelMenu, radioText, StoredText) {
-    let radio = getElementByClassNameAndShortTextContent(panelMenu, 'ytp-menuitem-label', radioText);
-    if (StoredText === null || radio === null) {
+  async function restoreSettingOfMenu(openedMenu, subMenuTitle, value) {
+    let radio = getElementByClassNameAndShortTextContent(openedMenu, 'ytp-menuitem-label', subMenuTitle);
+    if (value === null || radio === null) {
       return false;
     }
     radio.click();
-    let subMenu = await waitUntil(getPanelMenuByTitle(radioText));
-    return restoreRadio(subMenu, StoredText);
+    let subMenu = await waitUntil(getPanelMenuByTitle(subMenuTitle));
+    return restoreSettingByValue(subMenu, value);
   }
 
   function getPanelMenuByTitle(title) {
@@ -133,10 +137,10 @@ ensure:
     return panelTitles[0];
   }
 
-  function restoreRadio(panelMenu, value) {
-    let panelheader = panelMenu.previousElementSibling;
+  function restoreSettingByValue(openedMenu, value) {
+    let panelheader = openedMenu.previousElementSibling;
     let panelTitle = getPanelHeaderTitle(panelheader);
-    let storedRadio = getElementByClassNameAndShortTextContent(panelMenu, 'ytp-menuitem-label', value);
+    let storedRadio = getElementByClassNameAndShortTextContent(openedMenu, 'ytp-menuitem-label', value);
     if (storedRadio === null) {
       panelTitle.click();
       return false;
