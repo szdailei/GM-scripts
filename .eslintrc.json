@@ -1,0 +1,16 @@
+{
+  "env": {
+    "es6": true,
+    "browser": true,
+    "node": true,
+    "serviceworker": true,
+    "mocha": true
+  },
+  "parserOptions": { "ecmaVersion": 8 }, 
+  "extends": ["eslint:recommended"],
+  "rules": {
+    "eqeqeq": ["error"],
+    "no-eval": ["error"],
+    "callback-return": ["error"]
+  }
+}
