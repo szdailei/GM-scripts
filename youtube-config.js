@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name               Youtube记忆恢复字幕和播放速度-自选语言双语字幕-下载字幕
-// @name:en         Youtube store/restore subtitles and playback speed - bilingual subtitles of selected language - download subtitles
-// @description    记忆播放器设置菜单（含自动翻译菜单）选择的字幕语言和播放速度。默认正常速度和中文（简体）字幕/默认字幕（双语）；找不到完全匹配的语言时，选择拥有共同前缀的语言，例如中文（简体）->中文（繁体）。字幕可下载。浏览器语言支持英文和中文
-// @description:en  The selected subtitle language and playback speed in player settings menu (including the auto-translate menu) are stored and auto restored. Default is Normal speed and Chinese(Simplified)/Default subtitles (bilingual). When no matching language is found, select a language with a common prefix, such as Chinese (Simplified) - > Chinese (traditional). Subtitle is available for download. English and Chinese of browser language are supported
+// @name               Youtube记忆恢复双语字幕和播放速度-下载字幕
+// @name:en         Youtube store/restore bilingual subtitles and playback speed - download subtitles
+// @description    记忆播放器设置菜单（含自动翻译菜单）选择的字幕语言和播放速度。默认正常速度和中文（简体）字幕/默认字幕（双语）；找不到完全匹配的语言时，匹配前缀，例如中文（简体）->中文
+// @description:en  The selected subtitle language and playback speed are stored and auto restored
 // @match       https://www.youtube.com/*
 // @run-at       document-start
 // @author      szdailei@gmail.com
