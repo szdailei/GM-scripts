@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name               Youtube记忆恢复字幕和播放速度-自选语言双语字幕-下载字幕
 // @name:en         Youtube store/restore subtitles and playback speed - bilingual subtitles of selected language - download subtitles
-// @description    记忆播放器设置菜单（含自动翻译菜单）选择的字幕语言和播放速度，按照记忆自动打开双语字幕，支持播放器设置菜单里面所有的字幕语言，默认中文；同时存在中文简体和中文繁体字幕时，选择中文简体字幕。字幕可下载。浏览器语言支持英文和中文
-// @description:en  The selected subtitle language and playback speed in player settings menu (including the auto-translate menu) are stored and auto restored. All subtitle languages in player settings menu are supported, default is Chinese. Chinese(Simplified) subtitle is selected when there are both simplified and traditional Chinese subtitle. Subtitle is available for download. English and Chinese of browser language are supported
+// @description    记忆播放器设置菜单（含自动翻译菜单）选择的字幕语言和播放速度。默认正常速度和中文（简体）字幕/默认字幕（双语）；找不到完全匹配的语言时，选择拥有共同前缀的语言，例如中文（简体）->中文（繁体）。字幕可下载。浏览器语言支持英文和中文
+// @description:en  The selected subtitle language and playback speed in player settings menu (including the auto-translate menu) are stored and auto restored. Default is Normal speed and Chinese(Simplified)/Default subtitles (bilingual). When no matching language is found, select a language with a common prefix, such as Chinese (Simplified) - > Chinese (traditional). Subtitle is available for download. English and Chinese of browser language are supported
 // @match       https://www.youtube.com/*
 // @run-at       document-start
 // @author      szdailei@gmail.com
@@ -45,27 +45,16 @@ ensure:
     ytpPopup = await waitUntil(document.getElementById('ytp-id-20'));
     let settingsMenu = await waitUntil(getPanelMenuByTitle(''));
 
-    await restoreSettingOfMenu(settingsMenu, i18n.t('playSpeed'), getStorage(i18n.t('playSpeed')));
+    await restoreSettingOfTitle(settingsMenu, i18n.t('playSpeed'));
 
-    let isSubtitlRestored = await restoreSettingOfMenu(
-      settingsMenu,
-      i18n.t('subtitles'),
-      getStorage(i18n.t('subtitles'))
-    );
+    let isSubtitlRestored = await restoreSettingOfTitle(settingsMenu, i18n.t('subtitles'));
 
     if (isSubtitlRestored === false) {
-      let subtitlesRadio = getElementByClassNameAndShortTextContent(
-        settingsMenu,
-        'ytp-menuitem-label',
-        i18n.t('subtitles')
-      );
+      let labels = settingsMenu.getElementsByClassName('ytp-menuitem-label');
+      let subtitlesRadio = getElementByShortTextContent(labels, i18n.t('subtitles'));
       subtitlesRadio.click();
       let subtitleMenu = await waitUntil(getPanelMenuByTitle(i18n.t('subtitles')));
-      let isAutoTransSubtitleRestored = await restoreSettingOfMenu(
-        subtitleMenu,
-        i18n.t('autoTranlate'),
-        getStorage(i18n.t('autoTranlate'))
-      );
+      let isAutoTransSubtitleRestored = await restoreSettingOfTitle(subtitleMenu, i18n.t('autoTranlate'));
       if (isAutoTransSubtitleRestored === false) {
         settingsButton.click(); // close settings menu
       }
@@ -97,13 +86,15 @@ ensure:
     return true;
   }
 
-  async function restoreSettingOfMenu(openedMenu, subMenuTitle, value) {
-    let radio = getElementByClassNameAndShortTextContent(openedMenu, 'ytp-menuitem-label', subMenuTitle);
-    if (value === null || radio === null) {
+  async function restoreSettingOfTitle(openedMenu, subMenuTitle) {
+    let labels = openedMenu.getElementsByClassName('ytp-menuitem-label');
+    let radio = getElementByShortTextContent(labels, subMenuTitle);
+    if (radio === null) {
       return false;
     }
     radio.click();
     let subMenu = await waitUntil(getPanelMenuByTitle(subMenuTitle));
+    let value = getStorage(subMenuTitle);
     return restoreSettingByValue(subMenu, value);
   }
 
@@ -140,18 +131,23 @@ ensure:
   function restoreSettingByValue(openedMenu, value) {
     let panelheader = openedMenu.previousElementSibling;
     let panelTitle = getPanelHeaderTitle(panelheader);
-    let storedRadio = getElementByClassNameAndShortTextContent(openedMenu, 'ytp-menuitem-label', value);
+    let labels = openedMenu.getElementsByClassName('ytp-menuitem-label');
+    let storedRadio = getElementByTextContent(labels, value);
     if (storedRadio === null) {
-      panelTitle.click();
-      return false;
-    } else {
-      if (storedRadio.parentElement.getAttribute('aria-checked') === 'true') {
+      // if can't match '中文（简体）'，try '中文'
+      storedRadio = getElementByShortTextContent(labels, getShortText(value));
+      if (storedRadio === null) {
         panelTitle.click();
-        return true;
-      } else {
-        storedRadio.click();
-        return true;
+        return false;
       }
+    }
+
+    if (storedRadio.parentElement.getAttribute('aria-checked') === 'true') {
+      panelTitle.click();
+      return true;
+    } else {
+      storedRadio.click();
+      return true;
     }
   }
 
@@ -164,20 +160,25 @@ ensure:
 
     // clicked on radio which will open subMenu
     let label = this.getElementsByClassName('ytp-menuitem-label')[0];
-    let text = getShortText(label.textContent);
-    if (text === i18n.t('playSpeed') || text === i18n.t('subtitles') || text === i18n.t('autoTranlate')) {
-      onRadioToPanelMenuClicked(text);
+    let textContent = label.textContent;
+    let shortText = getShortText(textContent);
+    if (
+      shortText === i18n.t('playSpeed') ||
+      shortText === i18n.t('subtitles') ||
+      shortText === i18n.t('autoTranlate')
+    ) {
+      onRadioToPanelMenuClicked(shortText);
       return;
     }
 
     // in 'autoTranlate' menu, only one radio which seleted by default has parentNode, others are orphan nodes and can't get parentNode by 'this'
     let panelHeaders = ytpPopup.getElementsByClassName('ytp-panel-header');
     let title = getShortText(getPanelHeaderTitle(panelHeaders[0]).textContent);
-    setStorage(title, text);
+    setStorage(title, textContent);
   }
 
-  async function onRadioToPanelMenuClicked(text) {
-    let panelMenu = await waitUntil(getPanelMenuByTitle(text), TIMER_OF_MENU_LOAD_AFTER_USER_CLICK);
+  async function onRadioToPanelMenuClicked(title) {
+    let panelMenu = await waitUntil(getPanelMenuByTitle(title), TIMER_OF_MENU_LOAD_AFTER_USER_CLICK);
     addEventListenerOnPanelMenu(panelMenu);
     return;
   }
@@ -196,11 +197,8 @@ ensure:
 
     moreActionsMenuButton.click();
     let menuPopupRenderers = await waitUntil(document.getElementsByTagName('ytd-menu-popup-renderer'));
-    let openTranscriptRadio = getElementByTagNameAndTextContent(
-      menuPopupRenderers[0],
-      'yt-formatted-string',
-      i18n.t('openTranscript')
-    );
+    let formattedStrings = menuPopupRenderers[0].getElementsByTagName('yt-formatted-string');
+    let openTranscriptRadio = getElementByTextContent(formattedStrings, i18n.t('openTranscript'));
     if (openTranscriptRadio === null) {
       moreActionsMenuButton.click(); // close moreActionsMenu
       return;
@@ -277,28 +275,21 @@ ensure:
     a.click();
   }
 
-  function getElementByClassNameAndShortTextContent(element, className, textContent) {
-    return getElementByTextContent(element.getElementsByClassName(className), textContent);
-  }
-
-  function getElementByTagNameAndTextContent(element, tagName, textContent) {
-    return getElementByTextContent(element.getElementsByTagName(tagName), textContent);
-  }
-
   function getElementByTextContent(elements, textContent) {
     let length = elements.length;
-    // 中文语言的自动翻译菜单按照中文（繁体）-中文（简体）的顺序排列，英文语言的自动翻译菜单按照Chinese (Simplified)-Chinese (Traditional)的顺序排列。中文反序查找以便优先选择到中文（简体）
-    if (i18n.isReverseSearch() === false) {
-      for (let i = 0; i < length; i++) {
-        if (getShortText(elements[i].textContent) === textContent) {
-          return elements[i];
-        }
+    for (let i = 0; i < length; i++) {
+      if (elements[i].textContent === textContent) {
+        return elements[i];
       }
-    } else {
-      for (let i = length - 1; i >= 0; i--) {
-        if (getShortText(elements[i].textContent) === textContent) {
-          return elements[i];
-        }
+    }
+    return null;
+  }
+
+  function getElementByShortTextContent(elements, textContent) {
+    let length = elements.length;
+    for (let i = 0; i < length; i++) {
+      if (getShortText(elements[i].textContent) === textContent) {
+        return elements[i];
       }
     }
     return null;
@@ -381,19 +372,16 @@ ensure:
         case 'zh-SG':
         case 'cmn-Hans-SG':
           this.resource = resource.cmnHans;
-          this.reverseSearch = true;
           break;
         case 'zh-TW':
         case 'cmn-Hant-TW':
           this.resource = resource.cmnHant;
-          this.reverseSearch = true;
           break;
         case 'zh-HK':
         case 'yue-Hant-HK':
         case 'zh-MO':
         case 'yue-Hant-MO':
           this.resource = resource.cmnHantHK;
-          this.reverseSearch = true;
           break;
         case 'en':
         case 'en-AU':
@@ -411,17 +399,12 @@ ensure:
         case 'en-ZA':
         case 'en-ZW':
           this.resource = resource.en;
-          this.reverseSearch = false;
           break;
         default:
           alert(NOT_SUPPORT_LANGUAGE);
           this.resource = resource.en;
-          this.reverseSearch = false;
           break;
       }
-    }
-    isReverseSearch() {
-      return this.reverseSearch;
     }
     t(key) {
       return this.resource[key];
@@ -433,7 +416,8 @@ ensure:
       playSpeed: 'Playback speed',
       subtitles: 'Subtitles',
       autoTranlate: 'Auto-translate',
-      chinese: 'Chinese',
+      normal: 'Normal',
+      chinese: 'Chinese (Simplified)',
       openTranscript: 'Open transcript',
       downloadTranscript: 'Download transcript',
     },
@@ -441,7 +425,8 @@ ensure:
       playSpeed: '播放速度',
       subtitles: '字幕',
       autoTranlate: '自动翻译',
-      chinese: '中文',
+      normal: '正常',
+      chinese: '中文（简体）',
       openTranscript: '打开解说词',
       downloadTranscript: '下载字幕',
     },
@@ -449,7 +434,8 @@ ensure:
       playSpeed: '播放速度',
       subtitles: '字幕',
       autoTranlate: '自動翻譯',
-      chinese: '中文',
+      normal: '正常',
+      chinese: '中文（簡體）',
       openTranscript: '開啟字幕記錄',
       downloadTranscript: '下載字幕',
     },
@@ -457,6 +443,8 @@ ensure:
       playSpeed: '播放速度',
       subtitles: '字幕',
       autoTranlate: '自動翻譯',
+      normal: '正常',
+      chinese: '中文（簡體字）',
       openTranscript: '開啟字幕',
       downloadTranscript: '下載字幕',
     },
@@ -466,6 +454,7 @@ ensure:
   const SUBTITLE_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-subtitle';
   const NOT_SUPPORT_LANGUAGE =
     'Only English and Chinese are supported. \n\nFor users who have signed in youtube, please change the account language to English or Chinese. \n\nFor users who have not signed in youtube, please change the browser language to English or Chinese.';
+  const DEFAULT_PLAY_SPEED = 'normal';
   const DEFAULT_SUBTITLES = 'chinese';
   const TIMER_OF_MENU_LOAD_AFTER_USER_CLICK = 20;
   const TIMER_OF_ELEMENT_LOAD = 100;
@@ -479,6 +468,9 @@ ensure:
   }
   let i18n = new I18n(hostLanguage, resource);
 
+  if (getStorage(i18n.t('playSpeed')) === null) {
+    setStorage(i18n.t('playSpeed'), i18n.t(DEFAULT_PLAY_SPEED));
+  }
   if (getStorage(i18n.t('subtitles')) === null) {
     setStorage(i18n.t('subtitles'), i18n.t(DEFAULT_SUBTITLES));
   }
