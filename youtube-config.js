@@ -17,6 +17,122 @@ require:  @run-at document-start
 ensure:  run onYtNavigateFinish() when yt-navigate-finish event triggered
 */
 (function () {
+  const PLAY_SPEED_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-play-speed';
+  const SUBTITLE_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-subtitle';
+  const NOT_SUPPORT_LANGUAGE =
+    'Only English and Chinese are supported. \n\nFor users who have signed in youtube, please change the account language to English or Chinese. \n\nFor users who have not signed in youtube, please change the browser language to English or Chinese.';
+  const DEFAULT_PLAY_SPEED = 'normal';
+  const DEFAULT_SUBTITLES = 'chinese';
+  const TIMER_OF_MENU_LOAD_AFTER_USER_CLICK = 20;
+  const TIMER_OF_ELEMENT_LOAD = 100;
+  const numbers = '0123456789';
+  const specialCharacterAndNumbers = '`~!@#$%^&*()_+<>?:"{},./;\'[]0123456789-=（）';
+
+  const resource = {
+    en: {
+      playSpeed: 'Playback speed',
+      subtitles: 'Subtitles',
+      autoTranlate: 'Auto-translate',
+      normal: 'Normal',
+      chinese: 'Chinese (Simplified)',
+      openTranscript: 'Open transcript',
+      downloadTranscript: 'Download transcript',
+    },
+    cmnHans: {
+      playSpeed: '播放速度',
+      subtitles: '字幕',
+      autoTranlate: '自动翻译',
+      normal: '正常',
+      chinese: '中文（简体）',
+      openTranscript: '打开解说词',
+      downloadTranscript: '下载字幕',
+    },
+    cmnHant: {
+      playSpeed: '播放速度',
+      subtitles: '字幕',
+      autoTranlate: '自動翻譯',
+      normal: '正常',
+      chinese: '中文（簡體）',
+      openTranscript: '開啟字幕記錄',
+      downloadTranscript: '下載字幕',
+    },
+    cmnHantHK: {
+      playSpeed: '播放速度',
+      subtitles: '字幕',
+      autoTranlate: '自動翻譯',
+      normal: '正常',
+      chinese: '中文（簡體字）',
+      openTranscript: '開啟字幕',
+      downloadTranscript: '下載字幕',
+    },
+  };
+
+  class I18n {
+    constructor(langCode, resource) {
+      this.langCode = langCode;
+      switch (langCode) {
+        case 'zh':
+        case 'zh-CN':
+        case 'cmn-Hans-CN':
+        case 'zh-SG':
+        case 'cmn-Hans-SG':
+          this.resource = resource.cmnHans;
+          break;
+        case 'zh-TW':
+        case 'cmn-Hant-TW':
+          this.resource = resource.cmnHant;
+          break;
+        case 'zh-HK':
+        case 'yue-Hant-HK':
+        case 'zh-MO':
+        case 'yue-Hant-MO':
+          this.resource = resource.cmnHantHK;
+          break;
+        case 'en':
+        case 'en-AU':
+        case 'en-BZ':
+        case 'en-CA':
+        case 'en-CB':
+        case 'en-GB':
+        case 'en-IE':
+        case 'en-IN':
+        case 'en-JM':
+        case 'en-NZ':
+        case 'en-PH':
+        case 'en-TT':
+        case 'en-US':
+        case 'en-ZA':
+        case 'en-ZW':
+          this.resource = resource.en;
+          break;
+        default:
+          alert(NOT_SUPPORT_LANGUAGE);
+          this.resource = resource.en;
+          break;
+      }
+    }
+    t(key) {
+      return this.resource[key];
+    }
+  }
+
+  let hostLanguage, lastHref, settingsButton, ytpPopup, infoContents;
+  hostLanguage = document.getElementsByTagName('html')[0].getAttribute('lang');
+  if (hostLanguage === null) {
+    return;
+  }
+  let i18n = new I18n(hostLanguage, resource);
+
+  if (getStorage(i18n.t('playSpeed')) === null) {
+    setStorage(i18n.t('playSpeed'), i18n.t(DEFAULT_PLAY_SPEED));
+  }
+  if (getStorage(i18n.t('subtitles')) === null) {
+    setStorage(i18n.t('subtitles'), i18n.t(DEFAULT_SUBTITLES));
+  }
+  lastHref = null;
+  window.addEventListener('yt-navigate-finish', onYtNavigateFinish);
+  return;
+
   function onYtNavigateFinish() {
     let href = window.location.href;
     if (href === lastHref || href.indexOf('/watch') === -1) {
@@ -361,119 +477,4 @@ ensure:
       }, timeout);
     });
   }
-
-  class I18n {
-    constructor(langCode, resource) {
-      this.langCode = langCode;
-      switch (langCode) {
-        case 'zh':
-        case 'zh-CN':
-        case 'cmn-Hans-CN':
-        case 'zh-SG':
-        case 'cmn-Hans-SG':
-          this.resource = resource.cmnHans;
-          break;
-        case 'zh-TW':
-        case 'cmn-Hant-TW':
-          this.resource = resource.cmnHant;
-          break;
-        case 'zh-HK':
-        case 'yue-Hant-HK':
-        case 'zh-MO':
-        case 'yue-Hant-MO':
-          this.resource = resource.cmnHantHK;
-          break;
-        case 'en':
-        case 'en-AU':
-        case 'en-BZ':
-        case 'en-CA':
-        case 'en-CB':
-        case 'en-GB':
-        case 'en-IE':
-        case 'en-IN':
-        case 'en-JM':
-        case 'en-NZ':
-        case 'en-PH':
-        case 'en-TT':
-        case 'en-US':
-        case 'en-ZA':
-        case 'en-ZW':
-          this.resource = resource.en;
-          break;
-        default:
-          alert(NOT_SUPPORT_LANGUAGE);
-          this.resource = resource.en;
-          break;
-      }
-    }
-    t(key) {
-      return this.resource[key];
-    }
-  }
-
-  const resource = {
-    en: {
-      playSpeed: 'Playback speed',
-      subtitles: 'Subtitles',
-      autoTranlate: 'Auto-translate',
-      normal: 'Normal',
-      chinese: 'Chinese (Simplified)',
-      openTranscript: 'Open transcript',
-      downloadTranscript: 'Download transcript',
-    },
-    cmnHans: {
-      playSpeed: '播放速度',
-      subtitles: '字幕',
-      autoTranlate: '自动翻译',
-      normal: '正常',
-      chinese: '中文（简体）',
-      openTranscript: '打开解说词',
-      downloadTranscript: '下载字幕',
-    },
-    cmnHant: {
-      playSpeed: '播放速度',
-      subtitles: '字幕',
-      autoTranlate: '自動翻譯',
-      normal: '正常',
-      chinese: '中文（簡體）',
-      openTranscript: '開啟字幕記錄',
-      downloadTranscript: '下載字幕',
-    },
-    cmnHantHK: {
-      playSpeed: '播放速度',
-      subtitles: '字幕',
-      autoTranlate: '自動翻譯',
-      normal: '正常',
-      chinese: '中文（簡體字）',
-      openTranscript: '開啟字幕',
-      downloadTranscript: '下載字幕',
-    },
-  };
-
-  const PLAY_SPEED_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-play-speed';
-  const SUBTITLE_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-subtitle';
-  const NOT_SUPPORT_LANGUAGE =
-    'Only English and Chinese are supported. \n\nFor users who have signed in youtube, please change the account language to English or Chinese. \n\nFor users who have not signed in youtube, please change the browser language to English or Chinese.';
-  const DEFAULT_PLAY_SPEED = 'normal';
-  const DEFAULT_SUBTITLES = 'chinese';
-  const TIMER_OF_MENU_LOAD_AFTER_USER_CLICK = 20;
-  const TIMER_OF_ELEMENT_LOAD = 100;
-  const numbers = '0123456789';
-  const specialCharacterAndNumbers = '`~!@#$%^&*()_+<>?:"{},./;\'[]0123456789-=（）';
-
-  let hostLanguage, lastHref, settingsButton, ytpPopup, infoContents;
-  hostLanguage = document.getElementsByTagName('html')[0].getAttribute('lang');
-  if (hostLanguage === null) {
-    return;
-  }
-  let i18n = new I18n(hostLanguage, resource);
-
-  if (getStorage(i18n.t('playSpeed')) === null) {
-    setStorage(i18n.t('playSpeed'), i18n.t(DEFAULT_PLAY_SPEED));
-  }
-  if (getStorage(i18n.t('subtitles')) === null) {
-    setStorage(i18n.t('subtitles'), i18n.t(DEFAULT_SUBTITLES));
-  }
-  lastHref = null;
-  window.addEventListener('yt-navigate-finish', onYtNavigateFinish);
 })();
