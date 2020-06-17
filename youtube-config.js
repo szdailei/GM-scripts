@@ -11,12 +11,12 @@
 // @version         3.0.0
 // ==/UserScript==
 
-'use strict';
 /**
 require:  @run-at document-start
 ensure:  run onYtNavigateFinish() when yt-navigate-finish event triggered
 */
 (function () {
+  'use strict';
   const PLAY_SPEED_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-play-speed';
   const SUBTITLE_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-subtitle';
   const NOT_SUPPORT_LANGUAGE =
@@ -27,7 +27,6 @@ ensure:  run onYtNavigateFinish() when yt-navigate-finish event triggered
   const TIMER_OF_ELEMENT_LOAD = 100;
   const numbers = '0123456789';
   const specialCharacterAndNumbers = '`~!@#$%^&*()_+<>?:"{},./;\'[]0123456789-=（）';
-
   const resource = {
     en: {
       playSpeed: 'Playback speed',
@@ -116,20 +115,20 @@ ensure:  run onYtNavigateFinish() when yt-navigate-finish event triggered
     }
   }
 
-  let hostLanguage, lastHref, settingsButton, ytpPopup, infoContents;
-  hostLanguage = document.getElementsByTagName('html')[0].getAttribute('lang');
+  let settingsButton, ytpPopup, infoContents;
+  let lastHref = null;
+  let hostLanguage = document.getElementsByTagName('html')[0].getAttribute('lang');
   if (hostLanguage === null) {
     return;
   }
   let i18n = new I18n(hostLanguage, resource);
-
   if (getStorage(i18n.t('playSpeed')) === null) {
     setStorage(i18n.t('playSpeed'), i18n.t(DEFAULT_PLAY_SPEED));
   }
   if (getStorage(i18n.t('subtitles')) === null) {
     setStorage(i18n.t('subtitles'), i18n.t(DEFAULT_SUBTITLES));
   }
-  lastHref = null;
+
   window.addEventListener('yt-navigate-finish', onYtNavigateFinish);
   return;
 
@@ -156,7 +155,6 @@ ensure:
       return;
     }
     settingsButton.addEventListener('click', onRadioClicked);
-
     settingsButton.click();
     ytpPopup = await waitUntil(document.getElementById('ytp-id-20'));
     let settingsMenu = await waitUntil(getPanelMenuByTitle(''));
