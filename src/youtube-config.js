@@ -76,7 +76,6 @@ ensure:  run onYtNavigateFinish() when yt-navigate-finish event triggered
     }
   }
 
-  let infoContents;
   let lastHref = null;
   const hostLanguage = document.getElementsByTagName('html')[0].getAttribute('lang');
   if (hostLanguage === null) {
@@ -301,7 +300,7 @@ ensure:
   }
 
   async function turnOnTranscript() {
-    infoContents = await waitUntil(document.getElementById('info-contents'));
+    const infoContents = await waitUntil(document.getElementById('info-contents'));
     const moreActionsMenuButtons = await waitUntil(infoContents.getElementsByClassName('dropdown-trigger'));
     const moreActionsMenuButton = moreActionsMenuButtons[0];
 
@@ -337,6 +336,7 @@ ensure:
   }
 
   function onTranscriptDownloadButtonClicked() {
+    const infoContents = document.getElementById('info-contents');
     const title = infoContents.getElementsByTagName('h1')[0];
     const filename = `${title.textContent}.srt`;
 
@@ -363,7 +363,7 @@ ensure:
       }
 
       const serialNumberLine = i + 1;
-      const timeLine = `00:${startTime},000  -->  00: ${endTime},000`;
+      const timeLine = `00:${startTime},000  -->  00:${endTime},000`;
       const cues = cueGroups[i].getElementsByClassName('cue');
       const contentLine = cues[0].textContent.split('\n').join('').trim();
       content += `${serialNumberLine.toString()}\n${timeLine}\n${contentLine}\n\n`;
