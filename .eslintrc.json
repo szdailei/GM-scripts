@@ -1,16 +1,26 @@
 {
+  "parser": "babel-eslint",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "ecmaVersion": 8
+  },
   "env": {
-    "es6": true,
+    "es2017": true,
     "browser": true,
     "node": true,
     "serviceworker": true,
     "mocha": true
   },
-  "parserOptions": { "ecmaVersion": 8 }, 
-  "extends": ["eslint:recommended"],
+  "settings": {
+    "react": {
+      "version": "16"
+    }
+  },
+  "extends": ["airbnb", "prettier"],
   "rules": {
-    "eqeqeq": ["error"],
-    "no-eval": ["error"],
-    "callback-return": ["error"]
+    "import/no-unresolved": "off",
+    "no-use-before-define": ["error", {"functions": false}]
   }
 }
