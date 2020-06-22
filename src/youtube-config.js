@@ -8,12 +8,12 @@
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @namespace  https://greasyfork.org
-// @version         3.0.1
+// @version         3.0.2
 // ==/UserScript==
 
 /**
 require:  @run-at document-start
-ensure:  run onYtNavigateFinish() when yt-navigate-finish event triggered
+ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
 */
 (() => {
   const PLAY_SPEED_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-play-speed';
@@ -32,18 +32,22 @@ ensure:  run onYtNavigateFinish() when yt-navigate-finish event triggered
       switch (langCode) {
         case 'zh':
         case 'zh-CN':
-        case 'cmn-Hans-CN':
         case 'zh-SG':
+        case 'zh-Hans-CN':
+        case 'cmn-Hans-CN':
         case 'cmn-Hans-SG':
           this.resource = resource.cmnHans;
           break;
         case 'zh-TW':
+        case 'zh-Hant-TW':
         case 'cmn-Hant-TW':
           this.resource = resource.cmnHant;
           break;
         case 'zh-HK':
-        case 'yue-Hant-HK':
         case 'zh-MO':
+        case 'zh-Hant-HK':
+        case 'zh-Hant-MO':
+        case 'yue-Hant-HK':
         case 'yue-Hant-MO':
           this.resource = resource.cmnHantHK;
           break;
@@ -87,7 +91,7 @@ ensure:  run onYtNavigateFinish() when yt-navigate-finish event triggered
     setStorage(i18n.t('subtitles'), i18n.t(DEFAULT_SUBTITLES));
   }
 
-  window.addEventListener('yt-navigate-finish', onYtNavigateFinish);
+  window.addEventListener('yt-navigate-finish', handleYtNavigateFinish);
 
   function getResource() {
     const resource = {
@@ -127,7 +131,7 @@ ensure:  run onYtNavigateFinish() when yt-navigate-finish event triggered
     return resource;
   }
 
-  function onYtNavigateFinish() {
+  function handleYtNavigateFinish() {
     if (lastHref === window.location.href || window.location.href.indexOf('/watch') === -1) {
       return;
     }
@@ -154,7 +158,7 @@ ensure:
 
     const settingsButtons = await waitUntil(rightControl.getElementsByClassName('ytp-settings-button'));
     const settingsButton = settingsButtons[0];
-    settingsButton.addEventListener('click', onRadioClicked);
+    settingsButton.addEventListener('click', handleRadioClick);
     settingsButton.click();
     const ytpPopup = await waitUntil(document.getElementById('ytp-id-20'));
     const settingsMenu = await waitUntil(getPanelMenuByTitle(ytpPopup, ''));
@@ -261,11 +265,11 @@ ensure:
     return true;
   }
 
-  function onRadioClicked() {
+  function handleRadioClick() {
     const popup = document.getElementById('ytp-id-20');
     if (this.textContent === '') {
       // clicked on settingsButton which will open settingsMenu
-      onRadioToPanelMenuClicked(popup, '', onRadioClicked);
+      handleRadioToPanelMenuClick(popup, '', handleRadioClick);
       return;
     }
 
@@ -277,7 +281,7 @@ ensure:
       shortText === i18n.t('subtitles') ||
       shortText === i18n.t('autoTranlate')
     ) {
-      onRadioToPanelMenuClicked(popup, shortText, onRadioClicked);
+      handleRadioToPanelMenuClick(popup, shortText, handleRadioClick);
       return;
     }
 
@@ -287,7 +291,7 @@ ensure:
     setStorage(title, label.textContent);
   }
 
-  async function onRadioToPanelMenuClicked(popup, title, eventListener) {
+  async function handleRadioToPanelMenuClick(popup, title, eventListener) {
     const panelMenu = await waitUntil(getPanelMenuByTitle(popup, title), TIMER_OF_MENU_LOAD_AFTER_USER_CLICK);
     addEventListenerOnPanelMenu(panelMenu, eventListener);
   }

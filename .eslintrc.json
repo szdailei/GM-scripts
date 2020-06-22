@@ -1,11 +1,4 @@
 {
-  "parser": "babel-eslint",
-  "parserOptions": {
-    "ecmaFeatures": {
-      "jsx": true
-    },
-    "ecmaVersion": 8
-  },
   "env": {
     "es2017": true,
     "browser": true,
@@ -15,12 +8,17 @@
   },
   "settings": {
     "react": {
-      "version": "16"
+      "version": "16.7"
     }
   },
   "extends": ["airbnb", "prettier"],
   "rules": {
-    "import/no-unresolved": "off",
+    "import/no-unresolved": [
+      "error",
+      {
+        "ignore": ["react"]
+      }
+    ],
     "no-use-before-define": ["error", {"functions": false}]
   }
 }
