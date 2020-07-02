@@ -8,7 +8,7 @@
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @namespace  https://greasyfork.org
-// @version         3.0.2
+// @version         3.0.3
 // ==/UserScript==
 
 /**
@@ -159,20 +159,18 @@ ensure:
     const settingsButtons = await waitUntil(rightControl.getElementsByClassName('ytp-settings-button'));
     const settingsButton = settingsButtons[0];
     settingsButton.addEventListener('click', handleRadioClick);
+
     settingsButton.click();
-    const ytpPopup = await waitUntil(document.getElementById('ytp-id-20'));
-    const settingsMenu = await waitUntil(getPanelMenuByTitle(ytpPopup, ''));
+    const settingsMenu = await waitUntil(getPanelMenuByTitle(player, ''));
+    await restoreSettingOfTitle(player, settingsMenu, i18n.t('playSpeed'));
 
-    await restoreSettingOfTitle(ytpPopup, settingsMenu, i18n.t('playSpeed'));
-
-    const isSubtitlRestored = await restoreSettingOfTitle(ytpPopup, settingsMenu, i18n.t('subtitles'));
-
+    const isSubtitlRestored = await restoreSettingOfTitle(player, settingsMenu, i18n.t('subtitles'));
     if (isSubtitlRestored === false) {
       const labels = settingsMenu.getElementsByClassName('ytp-menuitem-label');
       const subtitlesRadio = getElementByShortTextContent(labels, i18n.t('subtitles'));
       subtitlesRadio.click();
-      const subtitleMenu = await waitUntil(getPanelMenuByTitle(ytpPopup, i18n.t('subtitles')));
-      const isAutoTransSubtitleRestored = await restoreSettingOfTitle(ytpPopup, subtitleMenu, i18n.t('autoTranlate'));
+      const subtitleMenu = await waitUntil(getPanelMenuByTitle(player, i18n.t('subtitles')));
+      const isAutoTransSubtitleRestored = await restoreSettingOfTitle(player, subtitleMenu, i18n.t('autoTranlate'));
       if (isAutoTransSubtitleRestored === false) {
         settingsButton.click(); // close settings menu
       }
@@ -198,7 +196,7 @@ ensure:
     return true;
   }
 
-  async function restoreSettingOfTitle(popup, openedMenu, subMenuTitle) {
+  async function restoreSettingOfTitle(player, openedMenu, subMenuTitle) {
     const value = getStorage(subMenuTitle);
     if (value === null) {
       return true;
@@ -210,15 +208,15 @@ ensure:
       return false;
     }
     radio.click();
-    const subMenu = await waitUntil(getPanelMenuByTitle(popup, subMenuTitle));
+    const subMenu = await waitUntil(getPanelMenuByTitle(player, subMenuTitle));
     return restoreSettingByValue(subMenu, value);
   }
 
-  function getPanelMenuByTitle(popup, title) {
+  function getPanelMenuByTitle(player, title) {
     if (title === null || title === '') {
       // settings menu
-      const panelMenus = popup.getElementsByClassName('ytp-panel-menu');
-      if (panelMenus === null || panelMenus[0].previousElementSibling !== null) {
+      const panelMenus = player.getElementsByClassName('ytp-panel-menu');
+      if (panelMenus === null || panelMenus.length === 0 || panelMenus[0].previousElementSibling !== null) {
         // no panelMenus or panelMenu has previousElementSibling (panelHeader)
         return null;
       }
@@ -226,7 +224,7 @@ ensure:
     }
 
     // other menu, not settings menu
-    const panelHeaders = popup.getElementsByClassName('ytp-panel-header');
+    const panelHeaders = player.getElementsByClassName('ytp-panel-header');
     if (panelHeaders !== null) {
       for (let i = 0; i < panelHeaders.length; i += 1) {
         const panelHeaderTitle = getPanelHeaderTitle(panelHeaders[i]);
@@ -266,10 +264,11 @@ ensure:
   }
 
   function handleRadioClick() {
-    const popup = document.getElementById('ytp-id-20');
+    const player = document.getElementById('movie_player');
+
     if (this.textContent === '') {
       // clicked on settingsButton which will open settingsMenu
-      handleRadioToPanelMenuClick(popup, '', handleRadioClick);
+      handleRadioToPanelMenuClick(player, '', handleRadioClick);
       return;
     }
 
@@ -281,18 +280,18 @@ ensure:
       shortText === i18n.t('subtitles') ||
       shortText === i18n.t('autoTranlate')
     ) {
-      handleRadioToPanelMenuClick(popup, shortText, handleRadioClick);
+      handleRadioToPanelMenuClick(player, shortText, handleRadioClick);
       return;
     }
 
     // in 'autoTranlate' menu, only one radio which seleted by default has parentNode, others are orphan nodes and can't get parentNode by 'this'
-    const panelHeaders = popup.getElementsByClassName('ytp-panel-header');
+    const panelHeaders = player.getElementsByClassName('ytp-panel-header');
     const title = getShortText(getPanelHeaderTitle(panelHeaders[0]).textContent);
     setStorage(title, label.textContent);
   }
 
-  async function handleRadioToPanelMenuClick(popup, title, eventListener) {
-    const panelMenu = await waitUntil(getPanelMenuByTitle(popup, title), TIMER_OF_MENU_LOAD_AFTER_USER_CLICK);
+  async function handleRadioToPanelMenuClick(player, title, eventListener) {
+    const panelMenu = await waitUntil(getPanelMenuByTitle(player, title), TIMER_OF_MENU_LOAD_AFTER_USER_CLICK);
     addEventListenerOnPanelMenu(panelMenu, eventListener);
   }
 
@@ -459,13 +458,13 @@ ensure:
 
   async function waitUntil(condition, timer) {
     let timeout = TIMER_OF_ELEMENT_LOAD;
-    if (timer !== undefined) {
+    if (timer) {
       timeout = timer;
     }
     return new Promise((resolve) => {
       const interval = setInterval(() => {
         const result = condition;
-        if (result !== null) {
+        if (result) {
           clearInterval(interval);
           resolve(result);
         }
