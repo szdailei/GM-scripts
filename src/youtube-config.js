@@ -141,7 +141,7 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
     youtubeConfig();
   }
 
-  /**
+/**
 require:  yt-navigate-finish event on https://www.youtube.com/watch*
 ensure: 
     1. If there isn't subtitle enable button, exit.
