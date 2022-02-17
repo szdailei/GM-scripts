@@ -19,7 +19,7 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
   const PLAY_SPEED_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-play-speed';
   const SUBTITLE_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-subtitle';
   const NOT_SUPPORT_LANGUAGE =
-    'Only English and Chinese are supported. \n\nFor users who have signed in youtube, please change the account language to English or Chinese. \n\nFor users who have not signed in youtube, please change the browser language to English or Chinese.';
+    'Only English/Chinese/Russian are supported. \n\nFor users who have signed in youtube, please change the account language to a supported language. \n\nFor users who have not signed in youtube, please change the browser language to a supported language.';
   const DEFAULT_SUBTITLES = 'chinese';
   const TIMER_OF_MENU_LOAD_AFTER_USER_CLICK = 20;
   const TIMER_OF_ELEMENT_LOAD = 100;
@@ -68,7 +68,12 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
         case 'en-ZW':
           this.resource = resource.en;
           break;
+        case 'ru':
+        case 'ru-RU':
+          this.resource = resource.ru;
+          break;
         default:
+          alert(NOT_SUPPORT_LANGUAGE); // eslint-disable-line no-alert
           this.resource = resource.en;
           break;
       }
@@ -126,6 +131,14 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
         openTranscript: '開啟字幕',
         downloadTranscript: '下載字幕',
       },
+      ru: {
+        playSpeed: 'Скорость воспроизведения',
+        subtitles: 'Субтитры',
+        autoTranlate: 'Перевести',
+        chinese: 'Русский',
+        openTranscript: 'Посмотреть расшифровку видео',
+        downloadTranscript: 'Скачать транскрибцию',
+      },
     };
     return resource;
   }
@@ -140,7 +153,7 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
     youtubeConfig();
   }
 
-/**
+  /**
 require:  yt-navigate-finish event on https://www.youtube.com/watch*
 ensure: 
     1. If there isn't subtitle enable button, exit.
