@@ -9,7 +9,7 @@
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @namespace  https://greasyfork.org
-// @version         3.0.4
+// @version         3.0.5
 // ==/UserScript==
 
 /**
@@ -74,7 +74,6 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
           this.resource = resource.ru;
           break;
         default:
-          alert(NOT_SUPPORT_LANGUAGE); // eslint-disable-line no-alert
           this.resource = resource.en;
           break;
       }
