@@ -9,7 +9,7 @@
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @namespace  https://greasyfork.org
-// @version         3.0.5
+// @version         3.0.6
 // ==/UserScript==
 
 /**
@@ -104,7 +104,6 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
         subtitles: 'Subtitles',
         autoTranlate: 'Auto-translate',
         chinese: 'Chinese (Simplified)',
-        openTranscript: 'Open transcript',
         downloadTranscript: 'Download transcript',
       },
       cmnHans: {
@@ -112,7 +111,6 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
         subtitles: '字幕',
         autoTranlate: '自动翻译',
         chinese: '中文（简体）',
-        openTranscript: '打开解说词',
         downloadTranscript: '下载字幕',
       },
       cmnHant: {
@@ -120,7 +118,6 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
         subtitles: '字幕',
         autoTranlate: '自動翻譯',
         chinese: '中文（簡體）',
-        openTranscript: '開啟字幕記錄',
         downloadTranscript: '下載字幕',
       },
       cmnHantHK: {
@@ -128,7 +125,6 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
         subtitles: '字幕',
         autoTranlate: '自動翻譯',
         chinese: '中文（簡體字）',
-        openTranscript: '開啟字幕',
         downloadTranscript: '下載字幕',
       },
       ru: {
@@ -136,7 +132,6 @@ ensure:  run handleYtNavigateFinish() when yt-navigate-finish event triggered
         subtitles: 'Субтитры',
         autoTranlate: 'Перевести',
         chinese: 'Русский',
-        openTranscript: 'Посмотреть расшифровку видео',
         downloadTranscript: 'Скачать транскрибцию',
       },
     };
@@ -321,33 +316,34 @@ ensure:
 
     moreActionsMenuButton.click();
     const menuPopupRenderers = await waitUntil(document.getElementsByTagName('ytd-menu-popup-renderer'));
-    const formattedStrings = menuPopupRenderers[0].getElementsByTagName('yt-formatted-string');
-    const openTranscriptRadio = getElementByTextContent(formattedStrings, i18n.t('openTranscript'));
-    if (openTranscriptRadio === null) {
+
+    const items = menuPopupRenderers[0].querySelector('#items')
+
+    // The first item should be invisible, the second item be "Report", the third be "Show transcript"
+    // "Show transcript" MUST be there
+    if (items.length < 3) {
       moreActionsMenuButton.click(); // close moreActionsMenu
       return;
     }
 
-    openTranscriptRadio.click();
+    const showTranscriptRadio = items.childNodes[2]
+
+    showTranscriptRadio.click();
+
     const panels = await waitUntil(document.getElementById('panels'));
-    const actionButton = panels.querySelector('#action-button');
-    insertPaperButton(actionButton, i18n.t('downloadTranscript'), onTranscriptDownloadButtonClicked);
+    const engagementPanel = panels.querySelector('ytd-engagement-panel-section-list-renderer[visibility=ENGAGEMENT_PANEL_VISIBILITY_EXPANDED]')
+    const titleContainer = engagementPanel.querySelector('div[id=title-container]');
+    const transcriptTitle = titleContainer.querySelector('yt-formatted-string[id=title-text]');
+
+    insertPaperButton(transcriptTitle, i18n.t('downloadTranscript'), onTranscriptDownloadButtonClicked);
   }
 
-  function insertPaperButton(referenceNode, textContent, clickCallback) {
-    if (
-      referenceNode.previousElementSibling !== null &&
-      referenceNode.previousElementSibling.textContent.indexOf(textContent) !== -1
-    ) {
-      return;
-    }
+  function insertPaperButton(transcriptTitle, textContent, clickCallback) {
+    transcriptTitle.textContent = textContent
+    transcriptTitle.style.background = 'red'
+    transcriptTitle.style.cursor = 'pointer'
 
-    const newNode = document.createElement('paper-button');
-    newNode.className = 'style-scope ytd-subscribe-button-renderer';
-    newNode.textContent = textContent;
-
-    referenceNode.parentNode.insertBefore(newNode, referenceNode);
-    newNode.addEventListener('click', clickCallback);
+    transcriptTitle.addEventListener('click', clickCallback);
   }
 
   function onTranscriptDownloadButtonClicked() {
