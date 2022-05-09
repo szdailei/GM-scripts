@@ -4,12 +4,12 @@
 // @description  记忆播放器设置菜单（含自动翻译菜单）选择的字幕语言和播放速度。默认中文（简体）字幕/默认字幕（双语）；找不到匹配的语言时，匹配前缀，例如中文（简体）->中文
 // @description:en  The selected subtitle language and playback speed are stored and auto restored
 // @license MIT
-// @match       https://www.youtube.com/*
+// @match       https://*.youtube.com/*
 // @run-at       document-start
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @namespace  https://greasyfork.org
-// @version         3.0.6
+// @version         3.1.0
 // ==/UserScript==
 
 /**
@@ -330,12 +330,18 @@ ensure:
 
     showTranscriptRadio.click();
 
-    const panels = await waitUntil(document.getElementById('panels'));
-    const engagementPanel = panels.querySelector('ytd-engagement-panel-section-list-renderer[visibility=ENGAGEMENT_PANEL_VISIBILITY_EXPANDED]')
+    const engagementPanel = await getEngagementPanel()
+
     const titleContainer = engagementPanel.querySelector('div[id=title-container]');
     const transcriptTitle = titleContainer.querySelector('yt-formatted-string[id=title-text]');
 
     insertPaperButton(transcriptTitle, i18n.t('downloadTranscript'), onTranscriptDownloadButtonClicked);
+  }
+
+  async function getEngagementPanel() {
+    const panels = await waitUntil(document.getElementById('panels'));
+    const engagementPanel = panels.querySelector('ytd-engagement-panel-section-list-renderer[visibility=ENGAGEMENT_PANEL_VISIBILITY_EXPANDED]')
+    return engagementPanel
   }
 
   function insertPaperButton(transcriptTitle, textContent, clickCallback) {
@@ -346,48 +352,51 @@ ensure:
     transcriptTitle.addEventListener('click', clickCallback);
   }
 
-  function onTranscriptDownloadButtonClicked() {
+  async function onTranscriptDownloadButtonClicked() {
     const infoContents = document.getElementById('info-contents');
-    const title = infoContents.getElementsByTagName('h1')[0];
-    const filename = `${title.textContent}.srt`;
+    const title = infoContents.querySelector('h1');
+    const filename = `${title.textContent}.vtt`;
 
-    const panels = document.getElementById('panels');
-    const cueGroups = panels.getElementsByClassName('cue-group');
+    const engagementPanel = await getEngagementPanel()
+
+    const segmentsContainer = engagementPanel.querySelector('div[id=segments-container]')
+
+    const cueGroups = segmentsContainer.childNodes
     if (cueGroups === null) {
       return;
     }
-    const content = getFormattedSRT(cueGroups);
+
+    const ytpTimeDuration = await getYtpTimeDuration()
+    const content = getFormattedSRT(cueGroups, ytpTimeDuration);
     saveTextAsFile(filename, content);
   }
 
-  function getFormattedSRT(cueGroups) {
-    let content = '';
+  function getFormattedSRT(cueGroups, ytpTimeDuration) {
+    let content = 'WEBVTT\n\n';
     for (let i = 0; i < cueGroups.length; i += 1) {
-      const currentSubtitleStartOffsets = cueGroups[i].getElementsByClassName('cue-group-start-offset');
-      const startTime = currentSubtitleStartOffsets[0].textContent.split('\n').join('').trim();
+      const currentSubtitleStartOffsets = cueGroups[i].getElementsByClassName('segment-timestamp');
+      const startTime = currentSubtitleStartOffsets[0].textContent.trim();
       let endTime;
       if (i === cueGroups.length - 1) {
-        endTime = getLastSubtitleEndTime(startTime);
+        endTime = ytpTimeDuration;
       } else {
-        const nextSubtitleStartOffsets = cueGroups[i + 1].getElementsByClassName('cue-group-start-offset');
+        const nextSubtitleStartOffsets = cueGroups[i + 1].getElementsByClassName('segment-timestamp');
         endTime = nextSubtitleStartOffsets[0].textContent.split('\n').join('').trim();
       }
 
-      const serialNumberLine = i + 1;
-      const timeLine = `00:${startTime},000  -->  00:${endTime},000`;
-      const cues = cueGroups[i].getElementsByClassName('cue');
+      const timeLine = `00:${startTime}.000  -->  00:${endTime}.000`;
+      const cues = cueGroups[i].getElementsByClassName('segment-text');
       const contentLine = cues[0].textContent.split('\n').join('').trim();
-      content += `${serialNumberLine.toString()}\n${timeLine}\n${contentLine}\n\n`;
+      content += `${timeLine}\n${contentLine}\n\n`;
     }
     return content;
   }
 
-  function getLastSubtitleEndTime(startTime) {
-    // assume 2 minutes long of the last subtitle
-    const startTimes = startTime.split(':');
-    const minuteNumber = parseInt(startTimes[0], 10) + 2;
-    const endTime = `${minuteNumber.toString()}:${startTimes[1]}`;
-    return endTime;
+  async function getYtpTimeDuration() {
+    const player = await waitUntil(document.getElementById('movie_player'));
+    const leftControls = await waitUntil(player.getElementsByClassName('ytp-left-controls'));
+    const ytpTimeDurations = leftControls[0].getElementsByClassName('ytp-time-duration')
+    return ytpTimeDurations[0].textContent
   }
 
   function saveTextAsFile(filename, text) {
