@@ -9,7 +9,7 @@
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @namespace  https://greasyfork.org
-// @version         3.1.0
+// @version         3.1.1
 // ==/UserScript==
 
 /**
@@ -317,7 +317,7 @@ ensure:
     moreActionsMenuButton.click();
     const menuPopupRenderers = await waitUntil(document.getElementsByTagName('ytd-menu-popup-renderer'));
 
-    const items = menuPopupRenderers[0].querySelector('#items')
+    const items = menuPopupRenderers[0].querySelector('#items');
 
     // The first item should be invisible, the second item be "Report", the third be "Show transcript"
     // "Show transcript" MUST be there
@@ -326,11 +326,11 @@ ensure:
       return;
     }
 
-    const showTranscriptRadio = items.childNodes[2]
+    const showTranscriptRadio = items.childNodes[2];
 
     showTranscriptRadio.click();
 
-    const engagementPanel = await getEngagementPanel()
+    const engagementPanel = await getEngagementPanel();
 
     const titleContainer = engagementPanel.querySelector('div[id=title-container]');
     const transcriptTitle = titleContainer.querySelector('yt-formatted-string[id=title-text]');
@@ -340,14 +340,16 @@ ensure:
 
   async function getEngagementPanel() {
     const panels = await waitUntil(document.getElementById('panels'));
-    const engagementPanel = panels.querySelector('ytd-engagement-panel-section-list-renderer[visibility=ENGAGEMENT_PANEL_VISIBILITY_EXPANDED]')
-    return engagementPanel
+    const engagementPanel = panels.querySelector(
+      'ytd-engagement-panel-section-list-renderer[visibility=ENGAGEMENT_PANEL_VISIBILITY_EXPANDED]'
+    );
+    return engagementPanel;
   }
 
   function insertPaperButton(transcriptTitle, textContent, clickCallback) {
-    transcriptTitle.textContent = textContent
-    transcriptTitle.style.background = 'red'
-    transcriptTitle.style.cursor = 'pointer'
+    transcriptTitle.textContent = textContent;
+    transcriptTitle.style.background = 'red';
+    transcriptTitle.style.cursor = 'pointer';
 
     transcriptTitle.addEventListener('click', clickCallback);
   }
@@ -357,31 +359,45 @@ ensure:
     const title = infoContents.querySelector('h1');
     const filename = `${title.textContent}.vtt`;
 
-    const engagementPanel = await getEngagementPanel()
+    const engagementPanel = await getEngagementPanel();
 
-    const segmentsContainer = engagementPanel.querySelector('div[id=segments-container]')
+    const segmentsContainer = engagementPanel.querySelector('div[id=segments-container]');
 
-    const cueGroups = segmentsContainer.childNodes
+    const cueGroups = segmentsContainer.childNodes;
     if (cueGroups === null) {
       return;
     }
 
-    const ytpTimeDuration = await getYtpTimeDuration()
+    const ytpTimeDuration = await getYtpTimeDuration();
     const content = getFormattedSRT(cueGroups, ytpTimeDuration);
     saveTextAsFile(filename, content);
+  }
+
+  function convertTimeFormat(time) {
+    const fields = time.split(':');
+
+    const min = parseInt(fields[0]);
+    let minStr;
+    if (min < 10) {
+      minStr = `0${min.toString()}`;
+    } else {
+      minStr = min.toString();
+    }
+
+    return `${minStr}:${fields[1]}`;
   }
 
   function getFormattedSRT(cueGroups, ytpTimeDuration) {
     let content = 'WEBVTT\n\n';
     for (let i = 0; i < cueGroups.length; i += 1) {
       const currentSubtitleStartOffsets = cueGroups[i].getElementsByClassName('segment-timestamp');
-      const startTime = currentSubtitleStartOffsets[0].textContent.trim();
+      const startTime = convertTimeFormat(currentSubtitleStartOffsets[0].textContent.trim());
       let endTime;
       if (i === cueGroups.length - 1) {
-        endTime = ytpTimeDuration;
+        endTime = convertTimeFormat(ytpTimeDuration);
       } else {
         const nextSubtitleStartOffsets = cueGroups[i + 1].getElementsByClassName('segment-timestamp');
-        endTime = nextSubtitleStartOffsets[0].textContent.split('\n').join('').trim();
+        endTime = convertTimeFormat(nextSubtitleStartOffsets[0].textContent.split('\n').join('').trim());
       }
 
       const timeLine = `00:${startTime}.000  -->  00:${endTime}.000`;
@@ -395,8 +411,8 @@ ensure:
   async function getYtpTimeDuration() {
     const player = await waitUntil(document.getElementById('movie_player'));
     const leftControls = await waitUntil(player.getElementsByClassName('ytp-left-controls'));
-    const ytpTimeDurations = leftControls[0].getElementsByClassName('ytp-time-duration')
-    return ytpTimeDurations[0].textContent
+    const ytpTimeDurations = leftControls[0].getElementsByClassName('ytp-time-duration');
+    return ytpTimeDurations[0].textContent;
   }
 
   function saveTextAsFile(filename, text) {
