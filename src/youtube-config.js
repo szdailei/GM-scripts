@@ -1,3 +1,4 @@
+/* eslint-disable no-use-before-define */
 // ==UserScript==
 // @name          Youtube记忆恢复双语字幕和播放速度-下载字幕
 // @name:en    Youtube store/restore bilingual subtitles and playback speed - download subtitles
@@ -9,7 +10,7 @@
 // @author      szdailei@gmail.com
 // @source      https://github.com/szdailei/GM-scripts
 // @namespace  https://greasyfork.org
-// @version         3.1.1
+// @version         3.1.2
 // ==/UserScript==
 
 /**
@@ -376,15 +377,23 @@ ensure:
   function convertTimeFormat(time) {
     const fields = time.split(':');
 
-    const min = parseInt(fields[0]);
-    let minStr;
-    if (min < 10) {
-      minStr = `0${min.toString()}`;
-    } else {
-      minStr = min.toString();
+    if (fields.length === 2) {
+      fields.unshift('00');
     }
 
-    return `${minStr}:${fields[1]}`;
+    const convertedArray = []
+    for (let i = 0; i < 2; i += 1) {
+      const fieldInt = parseInt(fields[i],10)
+      let str
+      if (fieldInt < 10) {
+        str = `0${fieldInt.toString()}`;
+      } else {
+        str = fieldInt.toString();
+      }
+      convertedArray.push(str)
+    }
+
+    return `${convertedArray[0]}:${convertedArray[1]}:${fields[2]}`;
   }
 
   function getFormattedSRT(cueGroups, ytpTimeDuration) {
@@ -400,7 +409,7 @@ ensure:
         endTime = convertTimeFormat(nextSubtitleStartOffsets[0].textContent.split('\n').join('').trim());
       }
 
-      const timeLine = `00:${startTime}.000  -->  00:${endTime}.000`;
+      const timeLine = `${startTime}.000  -->  ${endTime}.000`;
       const cues = cueGroups[i].getElementsByClassName('segment-text');
       const contentLine = cues[0].textContent.split('\n').join('').trim();
       content += `${timeLine}\n${contentLine}\n\n`;
