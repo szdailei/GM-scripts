@@ -5,12 +5,12 @@
 // @description  记忆播放器设置菜单（含自动翻译菜单）选择的字幕语言和播放速度。默认中文（简体）字幕/默认字幕（双语）；找不到匹配的语言时，匹配前缀，例如中文（简体）->中文
 // @description:en  The selected subtitle language and playback speed are stored and auto restored
 // @license MIT
-// @match       https://*.youtube.com/*
-// @run-at       document-start
-// @author      szdailei@gmail.com
-// @source      https://github.com/szdailei/GM-scripts
+// @match https://www.youtube.com/*
+// @run-at     document-start
+// @author     szdailei@gmail.com
+// @source     https://github.com/szdailei/GM-scripts
 // @namespace  https://greasyfork.org
-// @version         3.1.2
+// @version         3.1.3
 // ==/UserScript==
 
 /**
@@ -198,6 +198,11 @@ ensure:
     ) {
       return false;
     }
+
+    if (!subtitlesEnableButtons[0].getAttribute('aria-pressed')) {
+      return false;
+    }
+
     if (subtitlesEnableButtons[0].getAttribute('aria-pressed') === 'false') {
       subtitlesEnableButtons[0].click();
     }
