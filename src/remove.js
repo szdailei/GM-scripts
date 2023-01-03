@@ -15,7 +15,7 @@
 require:  @run-at document-start
 ensure:  run onYtNavigateFinish() if yt-navigate-finish event triggered
 */
-(function () {
+(() => {
   'use strict';
 
   const PLAY_SPEED_LOCAL_STORAGE_KEY = 'greasyfork-org-youtube-config-play-speed';
