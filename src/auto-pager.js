@@ -27,6 +27,16 @@ function getNextPageRef(doc) {
 }
 
 let isAppended = false;
+
+function onKeydown() {
+  const nextPageRef = getNextPageRef(document);
+  var event = document.all ? window.event : arguments[0];
+//  if (event.keyCode == 37) document.location = preview_page;
+  console.log("nextPageRef",nextPageRef)
+  if (event.keyCode == 39) document.location = nextPageRef;
+//  if (event.keyCode == 13) document.location = index_page;
+}
+
 function onScroll() {
   const nextPageRef = getNextPageRef(document);
   let contentElement;
@@ -58,7 +68,7 @@ function onScroll() {
     isAppended = false;
   }
 
-  const isNearBottom = window.innerHeight + window.pageYOffset + 800 >= document.body.offsetHeight;
+  const isNearBottom = window.innerHeight + window.pageYOffset + 1800 >= document.body.offsetHeight;
   if (isNearBottom) {
     isAppended = true;
     contentElement = document.getElementsByClassName('txtnav')[0];
@@ -73,3 +83,4 @@ function onScroll() {
 }
 
 addEventListener('scroll', onScroll);
+addEventListener('keydown', onKeydown);

@@ -80,19 +80,23 @@ typings/
 # DynamoDB Local files
 .dynamodb/
 
+# VS Code configure file
+.vscode
+
 # parcel/webpack build output
 dist/
 
-# yarn generate file
+# yarn/npm/pnpm generate file
 yarn.lock
-
-# VS Code configure file
-.vscode
+pnpm-lock.yaml
+package-lock.json
 
 # test output
 pdfs/
 exported-pdfs/
 reports/
+src-tauri/target/
+Cargo.lock
 
 # temp files
 TODOs.md
