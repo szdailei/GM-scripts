@@ -12,7 +12,7 @@ const defaultEnv = {
     height: 1080,
   },
   LOADED_TAG: '#div_baocuo',
-  outputDir: '/home/dailei/Downloads/Novel/',
+  outputDir: '~/Downloads/Novel/',
 };
 
 function help() {
