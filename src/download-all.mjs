@@ -12,7 +12,7 @@ const defaultEnv = {
     height: 1080,
   },
   LOADED_TAG: '#div_baocuo',
-  outputDir: '~/Downloads/Novel/',
+  outputDir: '/home/dailei/Downloads/Novel/',
 };
 
 function help() {
@@ -52,7 +52,10 @@ async function getNextPageRef(page) {
     }
 
     const nextPageButton = getNextPageButton(document);
-    return nextPageButton.href;
+    if (nextPageButton) {
+      return nextPageButton.href;
+    }
+    return null;
   });
   return href;
 }
@@ -100,7 +103,7 @@ async function main() {
   let content = await getContent(page);
 
   let href = await getNextPageRef(page);
-  while (href.indexOf('.htm') === -1) {
+  while (href && href.indexOf('.htm') === -1) {
     await page.goto(href);
     content += await getContent(page);
     href = await getNextPageRef(page);
