@@ -11,7 +11,7 @@ const defaultEnv = {
     width: 1920,
     height: 1080,
   },
-  LOADED_TAG: '#div_baocuo',
+  LOADED_TAG: '#txtright',
   outputDir: '/home/dailei/Downloads/Novel/',
 };
 
@@ -63,6 +63,8 @@ async function getNextPageRef(page) {
 async function getContent(page) {
   return page.evaluate(() => {
     const txtnavElement = document.getElementsByClassName('txtnav')[0];
+    if (!txtnavElement) return '';
+
     const childNodes = txtnavElement.childNodes;
     let content = '';
 
