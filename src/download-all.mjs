@@ -60,6 +60,15 @@ async function getNextPageRef(page) {
   return href;
 }
 
+async function getTitle(page) {
+  return page.evaluate(() => {
+    const titleElement = document.getElementsByTagName('h1')[0];
+    if (!titleElement) return '';
+
+    return titleElement.textContent.trim();
+  });
+}
+
 async function getContent(page) {
   return page.evaluate(() => {
     const txtnavElement = document.getElementsByClassName('txtnav')[0];
@@ -68,12 +77,17 @@ async function getContent(page) {
     const childNodes = txtnavElement.childNodes;
     let content = '';
 
+    let isFirstLine = true;
     for (let i = 0, { length } = childNodes; i < length; i += 1) {
       const childNode = childNodes[i];
       if (childNode.nodeName === '#text') {
         const value = childNode.nodeValue.trim();
         if (value.length > 0) {
-          content += `${value}\n\n`;
+          if (isFirstLine && value[0] === '第' && value.indexOf('章') !== -1) {
+            isFirstLine = false;
+          } else {
+            content += `${value}\n\n`;
+          }
         }
       }
     }
@@ -99,14 +113,18 @@ async function main() {
 
   const page = await createPageByUrl(browser, endpoint);
   const wholeTitle = await page.title();
-  const title = wholeTitle.split('-')[0];
-  const outputFile = `${join(defaultEnv.outputDir, title)}.txt`;
+  const fileName = wholeTitle.split('-')[0];
+  const outputFile = `${join(defaultEnv.outputDir, fileName)}.txt`;
 
-  let content = await getContent(page);
+  let title = await getTitle(page);
+  let content = `${title}\n\n`;
+  content += await getContent(page);
 
   let href = await getNextPageRef(page);
   while (href && href.indexOf('.htm') === -1) {
     await page.goto(href);
+    title = await getTitle(page);
+    content += `${title}\n\n`;
     content += await getContent(page);
     href = await getNextPageRef(page);
   }
