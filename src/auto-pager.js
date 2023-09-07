@@ -57,10 +57,12 @@ function onScroll() {
     // The top  and last are ads, skip
     for (let i = 6, { length } = lines; i < length - 6; i += 1) {
       const line = lines[i];
-      const textNode = document.createTextNode(line);
-      frag.appendChild(textNode);
-      const brElement = document.createElement('BR');
-      frag.appendChild(brElement);
+      if (line.indexOf('loadAdv') === -1) {
+        const textNode = document.createTextNode(line);
+        frag.appendChild(textNode);
+      }
+        const brElement = document.createElement('BR');
+        frag.appendChild(brElement);
     }
 
     contentElement.appendChild(frag);
