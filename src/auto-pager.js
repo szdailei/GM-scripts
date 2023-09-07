@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name        Auto pager - 69shu.com
+// @name        Auto pager - 69shuba.com
 // @namespace   Violentmonkey Scripts
-// @match       https://www.69shu.com/txt/*
+// @match       https://www.69shuba.com/txt/*
 // @grant       none
 // @version     1.0
 // @author      -

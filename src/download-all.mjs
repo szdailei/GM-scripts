@@ -83,7 +83,7 @@ async function getContent(page) {
       if (childNode.nodeName === '#text') {
         const value = childNode.nodeValue.trim();
         if (value.length > 0) {
-          if (!(isFirstLine && value[0] === '第' && value.indexOf('章') !== -1)) {
+          if (!(isFirstLine && value[0] === '第' && value.indexOf('章') !== -1) || value.indexOf('loadAdv') !== -1) {
             content += `${value}\n\n`;
             isFirstLine = false;
           }
