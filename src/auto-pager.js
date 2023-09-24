@@ -28,13 +28,11 @@ function getNextPageRef(doc) {
 
 let isAppended = false;
 
-function onKeydown() {
+function onKeydown(event) {
   const nextPageRef = getNextPageRef(document);
-  var event = document.all ? window.event : arguments[0];
-//  if (event.keyCode == 37) document.location = preview_page;
-  console.log("nextPageRef",nextPageRef)
+  if (event.keyCode == 37) document.location = preview_page;
   if (event.keyCode == 39) document.location = nextPageRef;
-//  if (event.keyCode == 13) document.location = index_page;
+  if (event.keyCode == 13) document.location = index_page;
 }
 
 function onScroll() {
@@ -55,14 +53,14 @@ function onScroll() {
     const lines = text.split('\n');
 
     // The top  and last are ads, skip
-    for (let i = 6, { length } = lines; i < length - 6; i += 1) {
+    for (let i = 0, { length } = lines; i < length; i += 1) {
       const line = lines[i];
       if (line.indexOf('loadAdv') === -1) {
         const textNode = document.createTextNode(line);
         frag.appendChild(textNode);
       }
-        const brElement = document.createElement('BR');
-        frag.appendChild(brElement);
+      const brElement = document.createElement('BR');
+      frag.appendChild(brElement);
     }
 
     contentElement.appendChild(frag);
