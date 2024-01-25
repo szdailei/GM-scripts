@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-await-in-loop */
 
 import fs from 'fs';
 import { join } from 'path';
@@ -11,14 +12,14 @@ const defaultEnv = {
     width: 1920,
     height: 1080,
   },
-  LOADED_TAG: '#txtright',
+  LOADED_TAG: '#contents',
   outputDir: '/home/dailei/Downloads/Novel/',
 };
 
 function help() {
   const HELP = `Usage: download-all.mjs endpoint
 
-  endpoint: https://www.69shu.com/.../the_first_chapter_of_novel
+  endpoint: http://www.anshuge.com/files/article/html/122/122042/46619954.html
   `;
   console.log(HELP);
 }
@@ -38,13 +39,13 @@ async function createPageByUrl(browser, url) {
 }
 
 async function getNextPageRef(page) {
-  const href = await page.evaluate(() => {
+  const nextPageRef = await page.evaluate(() => {
     function getNextPageButton(doc) {
       const aLinks = doc.getElementsByTagName('a');
       let nextPageButton;
       for (let i = 0, { length } = aLinks; i < length; i += 1) {
         const aLink = aLinks[i];
-        if (aLink.textContent === '下一章') {
+        if (aLink.textContent === '下一页') {
           nextPageButton = aLink;
         }
       }
@@ -57,40 +58,36 @@ async function getNextPageRef(page) {
     }
     return null;
   });
-  return href;
+  return nextPageRef;
 }
 
-async function getTitle(page) {
-  return page.evaluate(() => {
-    const titleElement = document.getElementsByTagName('h1')[0];
-    if (!titleElement) return '';
+async function getNovelName(page) {
+  const title = await page.title();
+  return title.split(' ')[0];
+}
 
-    return titleElement.textContent.trim();
+async function getChapterHeader(page) {
+  return page.evaluate(() => {
+    const headerElement = document.getElementsByTagName('h1')[0];
+    if (!headerElement) return '';
+
+    return headerElement.textContent.trim();
   });
 }
 
 async function getContent(page) {
   return page.evaluate(() => {
-    const txtnavElement = document.getElementsByClassName('txtnav')[0];
-    if (!txtnavElement) return '';
-
-    const childNodes = txtnavElement.childNodes;
-    let content = '';
-
-    let isFirstLine = true;
-    for (let i = 0, { length } = childNodes; i < length; i += 1) {
-      const childNode = childNodes[i];
-      if (childNode.nodeName === '#text') {
-        const value = childNode.nodeValue.trim();
-        if (value.length > 0) {
-          if (!(isFirstLine && value[0] === '第' && value.indexOf('章') !== -1) && value.indexOf('(本章完)') === -1) {
-            content += `${value}\n\n`;
-            isFirstLine = false;
-          }
-        }
+    const { textContent } = document.getElementById('contents');
+    const lines = textContent.split('\n\n');
+    const { length } = lines;
+    let txt = '';
+    for (let i = 0; i < length; i += 1) {
+      const line = lines[i].trim();
+      if (line.length !== 0) {
+        txt += `${line}\n<br>`;
       }
     }
-    return content;
+    return txt;
   });
 }
 
@@ -111,24 +108,60 @@ async function main() {
   });
 
   const page = await createPageByUrl(browser, endpoint);
-  const wholeTitle = await page.title();
-  const fileName = wholeTitle.split('-')[0];
-  const outputFile = `${join(defaultEnv.outputDir, fileName)}.txt`;
+  const fileName = await getNovelName(page);
+  const outputFile = `${join(defaultEnv.outputDir, fileName)}.html`;
 
-  let title = await getTitle(page);
-  let content = `${title}\n\n`;
-  content += await getContent(page);
+  let begin = `<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>本地文件 - ${fileName}</title>
+  <style>
+  .catalog {
+    display:grid;
+    grid-template-columns: auto auto auto;
+  }
+  .content {
+    font-weight:700;
+    font-size:24px;
+  }
+  </style>
+</head>
 
-  let href = await getNextPageRef(page);
-  while (href && href.indexOf('.htm') === -1) {
-    await page.goto(href);
-    title = await getTitle(page);
-    content += `${title}\n\n`;
-    content += await getContent(page);
-    href = await getNextPageRef(page);
+<body>
+  <a href="${endpoint}">${fileName} 网络链接</a>
+  <div id="catalog" class="catalog">
+`;
+  let index = 0;
+  let content = '';
+
+  let nextPageRef = await getNextPageRef(page);
+  for (;;) {
+    const chapterHeader = await getChapterHeader(page);
+    begin += `    <a href="#anchor_${index}">${chapterHeader}</a>\n`;
+    content += `  <h2 id="anchor_${index}">${chapterHeader}</h2><a href="#catalog">返回目录</a>\n`;
+    index += 1;
+
+    const txt = await getContent(page);
+    content += `  <div class="content">${txt}</div>`;
+
+    nextPageRef = await getNextPageRef(page);
+    if (nextPageRef && nextPageRef.indexOf('index.html') === -1) {
+      await page.goto(nextPageRef);
+    } else {
+      break;
+    }
   }
 
-  await fs.promises.writeFile(outputFile, content);
+  begin += '  </div>\n';
+
+  const end = `
+</body>
+</html>
+`;
+  const html = begin + content + end;
+  await fs.promises.writeFile(outputFile, html);
   await browser.close();
 }
 
