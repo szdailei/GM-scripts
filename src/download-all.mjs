@@ -139,6 +139,8 @@ async function main() {
     font-size:28px;
   }
   .page_ref {
+    display:flex;
+    align-items:center;
     font-size:20px;
   }
   .content {
