@@ -77,7 +77,10 @@ async function getChapterHeader(page) {
 
 async function getContent(page) {
   return page.evaluate(() => {
-    const { textContent } = document.getElementById('contents');
+    const contents = document.getElementById('contents');
+    if (!contents) return '';
+
+    const { textContent } = contents;
     const lines = textContent.split('\n\n');
     const { length } = lines;
     let txt = '';
@@ -118,9 +121,23 @@ async function main() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>本地文件 - ${fileName}</title>
   <style>
+  .endpoint_link {
+    display:block;
+    text-align:center;
+  }
   .catalog {
     display:grid;
     grid-template-columns: auto auto auto;
+  }
+  .page_ref {
+    margin:0 auto 0 auto;
+    width:30%;
+    display:grid;
+    grid-template-columns: auto auto auto;
+  }
+  .catalog_link {
+    display:block;
+    text-align:center;
   }
   .content {
     font-weight:700;
@@ -130,28 +147,42 @@ async function main() {
 </head>
 
 <body>
-  <a href="${endpoint}">${fileName} 网络链接</a>
+  <a class="endpoint_link" target=”_blank” href="${endpoint}">${fileName} 网络链接</a>
   <div id="catalog" class="catalog">
 `;
   let index = 0;
   let content = '';
+  let atLast = false;
 
-  let nextPageRef = await getNextPageRef(page);
   for (;;) {
     const chapterHeader = await getChapterHeader(page);
     begin += `    <a href="#anchor_${index}">${chapterHeader}</a>\n`;
-    content += `  <h2 id="anchor_${index}">${chapterHeader}</h2><a href="#catalog">返回目录</a>\n`;
-    index += 1;
+    content += `  <h2 id="anchor_${index}">${chapterHeader}</h2>\n`;
 
     const txt = await getContent(page);
-    content += `  <div class="content">${txt}</div>`;
+    const nextPageRef = await getNextPageRef(page);
+    if (nextPageRef.indexOf('index.html') !== -1) {
+      atLast = true;
+    }
 
-    nextPageRef = await getNextPageRef(page);
-    if (nextPageRef && nextPageRef.indexOf('index.html') === -1) {
-      await page.goto(nextPageRef);
-    } else {
+    let pre = '  <div class="page_ref">\n';
+    if (index !== 0) {
+      pre += `  <a href="#anchor_${index - 1}">上一章</a>\n`;
+    }
+    let next = '';
+    if (!atLast) {
+      next = `  <a href="#anchor_${index + 1}">下一章</a>\n`;
+    }
+    next += '  </div>';
+    content += `${pre}  <a class="catalog_link" href="#catalog">返回目录</a>\n${next}\n`;
+    index += 1;
+
+    content += `  <div class="content">${txt}\n  </div>`;
+
+    if (atLast) {
       break;
     }
+    await page.goto(nextPageRef);
   }
 
   begin += '  </div>\n';
