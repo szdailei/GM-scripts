@@ -105,7 +105,8 @@ async function main() {
 
   const browser = await puppeteer.launch({
     executablePath: defaultEnv.PUPPETEER_EXECUTABLE_PATH,
-    args: [`--proxy-server=${defaultEnv.PROXY}`, '--no-sandbox', '--disabled-setupid-sandbox'],
+    //    args: [`--proxy-server=${defaultEnv.PROXY}`, '--no-sandbox', '--disabled-setupid-sandbox'],
+    args: ['--no-sandbox', '--disabled-setupid-sandbox'],
     headless: true,
     defaultViewport: defaultEnv.viewPort,
   });
@@ -119,7 +120,7 @@ async function main() {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>本地文件 - ${fileName}</title>
+  <title>本地 - ${fileName}</title>
   <style>
   .endpoint_link {
     display:block;
@@ -129,15 +130,16 @@ async function main() {
     display:grid;
     grid-template-columns: auto auto auto;
   }
-  .page_ref {
-    margin:0 auto 0 auto;
-    width:30%;
+  .header {
     display:grid;
-    grid-template-columns: auto auto auto;
+    grid-template-columns: auto auto auto auto;
+    font-weight:700;
   }
-  .catalog_link {
-    display:block;
-    text-align:center;
+  .chapter_title {
+    font-size:28px;
+  }
+  .page_ref {
+    font-size:20px;
   }
   .content {
     font-weight:700;
@@ -157,7 +159,7 @@ async function main() {
   for (;;) {
     const chapterHeader = await getChapterHeader(page);
     begin += `    <a href="#anchor_${index}">${chapterHeader}</a>\n`;
-    content += `  <h2 id="anchor_${index}">${chapterHeader}</h2>\n`;
+    content += `  <div id="anchor_${index}" class="header">\n    <div class="chapter_title"> ${chapterHeader}</div>\n`;
 
     const txt = await getContent(page);
     const nextPageRef = await getNextPageRef(page);
@@ -165,19 +167,19 @@ async function main() {
       atLast = true;
     }
 
-    let pre = '  <div class="page_ref">\n';
+    let pre = '';
     if (index !== 0) {
-      pre += `  <a href="#anchor_${index - 1}">上一章</a>\n`;
+      pre += `    <a class="page_ref" href="#anchor_${index - 1}">上一章</a>\n`;
     }
     let next = '';
     if (!atLast) {
-      next = `  <a href="#anchor_${index + 1}">下一章</a>\n`;
+      next = `    <a class="page_ref" href="#anchor_${index + 1}">下一章</a>\n`;
     }
     next += '  </div>';
-    content += `${pre}  <a class="catalog_link" href="#catalog">返回目录</a>\n${next}\n`;
+    content += `${pre}    <a class="page_ref" href="#catalog">返回目录</a>\n${next}\n`;
     index += 1;
 
-    content += `  <div class="content">${txt}\n  </div>`;
+    content += `  <div class="content">${txt}\n  </div>\n`;
 
     if (atLast) {
       break;
