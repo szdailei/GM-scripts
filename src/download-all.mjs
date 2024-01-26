@@ -82,9 +82,8 @@ async function getContent(page) {
 
     const { textContent } = contents;
     const lines = textContent.split('\n\n');
-    const { length } = lines;
     let txt = '';
-    for (let i = 0; i < length; i += 1) {
+    for (let i = 0, { length } = lines; i < length; i += 1) {
       const line = lines[i].trim();
       if (line.length !== 0) {
         txt += `${line}\n<br>`;
@@ -92,6 +91,16 @@ async function getContent(page) {
     }
     return txt;
   });
+}
+
+function getIndexUrl(endpoint) {
+  const fields = endpoint.split('/');
+  let indexUrl = fields[0];
+  for (let i = 1, { length } = fields; i < length - 1; i += 1) {
+    indexUrl += `/${fields[i]}`;
+  }
+  indexUrl += `/index.html`;
+  return indexUrl;
 }
 
 async function main() {
@@ -102,6 +111,7 @@ async function main() {
   }
 
   const endpoint = argv[2];
+  const indexUrl = getIndexUrl(endpoint);
 
   const browser = await puppeteer.launch({
     executablePath: defaultEnv.PUPPETEER_EXECUTABLE_PATH,
@@ -122,7 +132,7 @@ async function main() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>本地 - ${fileName}</title>
   <style>
-  .endpoint_link {
+  .url {
     display:block;
     text-align:center;
   }
@@ -151,7 +161,7 @@ async function main() {
 </head>
 
 <body>
-  <a class="endpoint_link" target=”_blank” href="${endpoint}">${fileName} 网络链接</a>
+  <a class="url" target=”_blank” href="${indexUrl}">${fileName} 网络链接</a>
   <div id="catalog" class="catalog">
 `;
   let index = 0;
