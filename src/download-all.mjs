@@ -143,15 +143,12 @@ async function main() {
   .header {
     display:grid;
     grid-template-columns: auto auto auto auto;
+    align-items:center;
     font-weight:700;
+    font-size:20px;
   }
   .chapter_title {
     font-size:28px;
-  }
-  .page_ref {
-    display:flex;
-    align-items:center;
-    font-size:20px;
   }
   .content {
     font-weight:700;
@@ -181,14 +178,14 @@ async function main() {
 
     let pre = '';
     if (index !== 0) {
-      pre += `    <a class="page_ref" href="#anchor_${index - 1}">上一章</a>\n`;
+      pre += `    <a href="#anchor_${index - 1}">上一章</a>\n`;
     }
     let next = '';
     if (!atLast) {
-      next = `    <a class="page_ref" href="#anchor_${index + 1}">下一章</a>\n`;
+      next = `    <a href="#anchor_${index + 1}">下一章</a>\n`;
     }
     next += '  </div>';
-    content += `${pre}    <a class="page_ref" href="#catalog">返回目录</a>\n${next}\n`;
+    content += `${pre}    <a href="#catalog">返回目录</a>\n${next}\n`;
     index += 1;
 
     content += `  <div class="content">${txt}\n  </div>\n`;
