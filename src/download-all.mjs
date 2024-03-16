@@ -93,14 +93,14 @@ async function getContent(page) {
   });
 }
 
-function getIndexUrl(endpoint) {
+function getIndexPageUrl(endpoint) {
   const fields = endpoint.split('/');
-  let indexUrl = fields[0];
+  let indexPageUrl = fields[0];
   for (let i = 1, { length } = fields; i < length - 1; i += 1) {
-    indexUrl += `/${fields[i]}`;
+    indexPageUrl += `/${fields[i]}`;
   }
-  indexUrl += `/index.html`;
-  return indexUrl;
+  indexPageUrl += `/index.html`;
+  return indexPageUrl;
 }
 
 async function main() {
@@ -111,7 +111,7 @@ async function main() {
   }
 
   const endpoint = argv[2];
-  const indexUrl = getIndexUrl(endpoint);
+  const indexPageUrl = getIndexPageUrl(endpoint);
 
   const browser = await puppeteer.launch({
     executablePath: defaultEnv.PUPPETEER_EXECUTABLE_PATH,
@@ -122,15 +122,15 @@ async function main() {
   });
 
   const page = await createPageByUrl(browser, endpoint);
-  const fileName = await getNovelName(page);
-  const outputFile = `${join(defaultEnv.outputDir, fileName)}.html`;
+  const novelName = await getNovelName(page);
+  const outputFile = `${join(defaultEnv.outputDir, novelName)}.html`;
 
   let begin = `<!DOCTYPE html>
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>本地 - ${fileName}</title>
+  <title>本地 - ${novelName}</title>
   <style>
   .url {
     display:block;
@@ -158,16 +158,17 @@ async function main() {
 </head>
 
 <body>
-  <a class="url" target=”_blank” href="${indexUrl}">${fileName} 网络链接</a>
+  <a class="url" target="_blank" href="${indexPageUrl}">${novelName} 主页</a>
   <div id="catalog" class="catalog">
 `;
   let index = 0;
   let content = '';
+  let chapterHeader = ''
   let atLast = false;
 
   for (;;) {
-    const chapterHeader = await getChapterHeader(page);
-    begin += `    <a href="#anchor_${index}">${chapterHeader}</a>\n`;
+    chapterHeader = await getChapterHeader(page);
+    begin += `    <a id="anchor_catalog_${index}" href="#anchor_${index}">${chapterHeader}</a>\n`;
     content += `  <div id="anchor_${index}" class="header">\n    <div class="chapter_title"> ${chapterHeader}</div>\n`;
 
     const txt = await getContent(page);
@@ -185,7 +186,7 @@ async function main() {
       next = `    <a href="#anchor_${index + 1}">下一章</a>\n`;
     }
     next += '  </div>';
-    content += `${pre}    <a href="#catalog">返回目录</a>\n${next}\n`;
+    content += `${pre}    <a href="#anchor_catalog_${index}">返回目录</a>\n${next}\n`;
     index += 1;
 
     content += `  <div class="content">${txt}\n  </div>\n`;
@@ -196,7 +197,9 @@ async function main() {
     await page.goto(nextPageRef);
   }
 
+  const indexPageUrlWithTextFragment = `${indexPageUrl}#:~:text=${chapterHeader}`
   begin += '  </div>\n';
+  begin += `  <a class="url" target="_blank" href="${indexPageUrlWithTextFragment}">${novelName} 最后章节</a>\n`
 
   const end = `
 </body>
