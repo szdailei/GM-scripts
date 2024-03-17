@@ -19,7 +19,6 @@ async function waitForDone(page, options) {
 async function createPageByUrl(browser, url, options) {
   const page = await browser.newPage();
   await page.goto(url);
-
   await waitForDone(page, options);
   return page;
 }
@@ -84,7 +83,7 @@ async function getContent(page, options) {
         const value = childNode.nodeValue.trim();
         if (value.length > 0) {
           if (!(isFirstLine && value[0] === '第' && value.indexOf('章') !== -1) && value.indexOf('(本章完)') === -1) {
-            txt += `${value}\n\n`;
+            txt += `${value}\n<br>`;
             isFirstLine = false;
           }
         }
@@ -178,6 +177,7 @@ async function evalNovel(endpoint, options) {
     }
 
     chapterHeader = await getChapterHeader(page);
+    console.log(chapterHeader);
     catalog += `    <a id="anchor_catalog_${index}" href="#anchor_${index}">${chapterHeader}</a>\n`;
     content += `  <div id="anchor_${index}" class="header">\n    <div class="chapter_title"> ${chapterHeader}</div>\n`;
 
@@ -193,14 +193,19 @@ async function evalNovel(endpoint, options) {
     }
     next += '  </div>';
     content += `${pre}    <a href="#anchor_catalog_${index}">返回目录</a>\n${next}\n`;
-    content += `  <div class="content">${txt}\n  </div>\n`;
+    content += `  <div class="content">${txt}  </div>`;
 
     index += 1;
 
     if (!nextPageRef) {
       break;
     }
-    await page.goto(nextPageRef);
+    try {
+      await page.goto(nextPageRef);
+      await waitForDone(page, options);
+    } catch (error) {
+      break;
+    }
   }
 
   const indexPageUrlWithTextFragment = `${indexPageUrl}#:~:text=${chapterHeader}`;

@@ -2,10 +2,9 @@
 /* eslint-disable no-await-in-loop */
 
 import fs from 'fs';
+import os from 'os';
 import { join } from 'path';
 import evalNovel from './eval-novel.mjs';
-
-const outputDir = '/home/dailei/Downloads/Novel/';
 
 function help() {
   const HELP = 'Usage: download-novel.mjs http://novel_site/.../the_start_chapter.html';
@@ -42,6 +41,9 @@ async function main() {
     console.log('The site is not supported');
     process.exit(1);
   }
+
+  const userHomeDir = os.homedir();
+  const outputDir = `${userHomeDir}/Downloads/Novel/`;
 
   const { novelName, html } = await evalNovel(endpoint, options);
   const outputFile = `${join(outputDir, novelName)}.html`;
