@@ -125,7 +125,7 @@ function createStartOfHtml(indexPageUrlWithTextFragment, novelName) {
   }
   .catalog {
     display:grid;
-    grid-template-columns: auto auto auto;
+    grid-template-columns: 1fr 1fr 1fr;
   }
   .header {
     display:grid;
@@ -178,7 +178,7 @@ async function evalNovel(endpoint, options) {
 
     chapterHeader = await getChapterHeader(page);
     console.log(chapterHeader);
-    catalog += `    <a id="anchor_catalog_${index}" href="#anchor_${index}">${chapterHeader}</a>\n`;
+    catalog += `    <div><a id="anchor_catalog_${index}" href="#anchor_${index}">${chapterHeader}</a></div>\n`;
     content += `  <div id="anchor_${index}" class="header">\n    <div class="chapter_title"> ${chapterHeader}</div>\n`;
 
     const nextPageRef = await getNextPageRef(page, options);
