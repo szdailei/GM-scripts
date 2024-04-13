@@ -199,7 +199,7 @@ function createStartOfHtml(indexPageUrlWithTextFragment, novelName) {
 async function evalNovel(endpoint) {
   const browser = await puppeteer.launch({
     executablePath: defaultEnv.PUPPETEER_EXECUTABLE_PATH,
-    args: [`--proxy-server=${defaultEnv.PROXY}`, '--no-sandbox', '--disabled-setupid-sandbox'],
+    // args: [`--proxy-server=${defaultEnv.PROXY}`, '--no-sandbox', '--disabled-setupid-sandbox'],
     // args: ['--no-sandbox', '--disabled-setupid-sandbox'],
     headless: 'new',
     defaultViewport: defaultEnv.viewPort,
@@ -222,7 +222,6 @@ async function evalNovel(endpoint) {
   console.log(
     `NovelName: ${novelName}\nIndexPageUrl: ${indexPageUrl}\nContentNodeId: ${id}\nContentNodeClassName: ${className}`
   );
-  console.log('selectorOfWait', selectorOfWait);
 
   let catalog = '';
   let index = 0;
@@ -232,7 +231,7 @@ async function evalNovel(endpoint) {
   for (;;) {
     const txt = await getContent(page, contentNodeInfo);
     if (!txt) {
-      console.log('No content. Break');
+      console.log('\n\n没有发现正文，退出');
       break;
     }
 
@@ -258,7 +257,7 @@ async function evalNovel(endpoint) {
     index += 1;
 
     if (!nextPageRef || nextPageRef === indexPageUrl) {
-      console.log('\n                  下载完成');
+      console.log('\n\n下载完成');
       break;
     }
 
@@ -268,7 +267,7 @@ async function evalNovel(endpoint) {
         timeout: 5000,
       });
     } catch (error) {
-      console.log(`${error.message}\n下载了部分章节`);
+      console.log(`${error.message}\n\n下载了部分章节`);
       break;
     }
   }
