@@ -28,7 +28,8 @@ async function getNextPageRef(page, options) {
     function getHref(doc) {
       const aLinks = doc.getElementsByTagName('a');
       let txt = '';
-      for (let i = 0, { length } = aLinks; i < length; i += 1) {
+      const { length } = aLinks;
+      for (let i = 0; i < length; i += 1) {
         const aLink = aLinks[i];
         txt += `${aLink.text}\n`;
         if (aLink.text.indexOf('下一页') !== -1 || aLink.text.indexOf('下一章') !== -1) {
@@ -46,7 +47,16 @@ async function getNextPageRef(page, options) {
 
 async function getNovelName(page, options) {
   const title = await page.title();
-  return title.split(options.delimiterInTitle)[0];
+  let pureTitle = '';
+  const { length } = title;
+  for (let i = 0; i < length; i += 1) {
+    const char = title[i];
+    pureTitle += char;
+    if (char === ' ' || char === '-' || char === '_') {
+      return pureTitle;
+    }
+  }
+  return title;
 }
 
 async function getChapterHeader(page) {

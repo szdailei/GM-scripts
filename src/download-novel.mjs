@@ -25,21 +25,18 @@ async function main() {
     options = {
       selectorOfWait: '#contents',
       contentId: 'contents',
-      delimiterInTitle: ' ',
       prefixOfBookPath: 'files/article/html',
     };
   } else if (endpoint.indexOf('69shu') !== -1) {
     options = {
       selectorOfWait: '#txtright',
       contentClass: 'txtnav',
-      delimiterInTitle: '-',
       prefixOfBookPath: 'book',
     };
   } else if (endpoint.indexOf('5dscw') !== -1) {
     options = {
       selectorOfWait: '#content',
       contentId: 'content',
-      delimiterInTitle: '-',
       prefixOfBookPath: 'book',
     };
   } else {
