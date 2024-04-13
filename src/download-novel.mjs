@@ -20,34 +20,10 @@ async function main() {
 
   const endpoint = argv[2];
 
-  let options;
-  if (endpoint.indexOf('anshuge') !== -1) {
-    options = {
-      selectorOfWait: '#contents',
-      contentId: 'contents',
-      prefixOfBookPath: 'files/article/html',
-    };
-  } else if (endpoint.indexOf('69shu') !== -1) {
-    options = {
-      selectorOfWait: '#txtright',
-      contentClass: 'txtnav',
-      prefixOfBookPath: 'book',
-    };
-  } else if (endpoint.indexOf('5dscw') !== -1) {
-    options = {
-      selectorOfWait: '#content',
-      contentId: 'content',
-      prefixOfBookPath: 'book',
-    };
-  } else {
-    console.log('The site is not supported');
-    process.exit(1);
-  }
-
   const userHomeDir = os.homedir();
   const outputDir = `${userHomeDir}/Downloads/Novel/`;
 
-  const { novelName, html } = await evalNovel(endpoint, options);
+  const { novelName, html } = await evalNovel(endpoint);
   const outputFile = `${join(outputDir, novelName)}.html`;
   await fs.promises.writeFile(outputFile, html);
 }
