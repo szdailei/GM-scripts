@@ -25,24 +25,22 @@ async function createPageByUrl(browser, url, options) {
 
 async function getNextPageRef(page, options) {
   const nextPageRef = await page.evaluate((arg1) => {
-    function getNextPageButton(doc) {
+    function getHref(doc) {
       const aLinks = doc.getElementsByTagName('a');
-      let nextPageButton;
+      let txt = '';
       for (let i = 0, { length } = aLinks; i < length; i += 1) {
         const aLink = aLinks[i];
-        if (aLink.textContent === arg1.textOfNextChapterButton) {
-          nextPageButton = aLink;
+        txt += `${aLink.text}\n`;
+        if (aLink.text.indexOf('下一页') !== -1 || aLink.text.indexOf('下一章') !== -1) {
+          return aLink.href;
         }
       }
-      return nextPageButton;
+      return null;
     }
 
-    const nextPageButton = getNextPageButton(document);
-    if (nextPageButton) {
-      return nextPageButton.href;
-    }
-    return null;
+    return getHref(document);
   }, options);
+
   return nextPageRef;
 }
 
@@ -87,6 +85,8 @@ async function getContent(page, options) {
             isFirstLine = false;
           }
         }
+      } else if (childNode.nodeName === 'P') {
+        txt += `${childNode.textContent}\n<br>`;
       }
     }
 
@@ -157,7 +157,8 @@ async function evalNovel(endpoint, options) {
 
   const browser = await puppeteer.launch({
     executablePath: defaultEnv.PUPPETEER_EXECUTABLE_PATH,
-    args: [`--proxy-server=${defaultEnv.PROXY}`, '--no-sandbox', '--disabled-setupid-sandbox'],
+    //  args: [`--proxy-server=${defaultEnv.PROXY}`, '--no-sandbox', '--disabled-setupid-sandbox'],
+    args: ['--no-sandbox', '--disabled-setupid-sandbox'],
     headless: 'new',
     defaultViewport: defaultEnv.viewPort,
   });
@@ -173,6 +174,7 @@ async function evalNovel(endpoint, options) {
   for (;;) {
     const txt = await getContent(page, options);
     if (!txt) {
+      console.log('No content. Break');
       break;
     }
 

@@ -25,7 +25,6 @@ async function main() {
     options = {
       selectorOfWait: '#contents',
       contentId: 'contents',
-      textOfNextChapterButton: '下一页',
       delimiterInTitle: ' ',
       prefixOfBookPath: 'files/article/html',
     };
@@ -33,7 +32,13 @@ async function main() {
     options = {
       selectorOfWait: '#txtright',
       contentClass: 'txtnav',
-      textOfNextChapterButton: '下一章',
+      delimiterInTitle: '-',
+      prefixOfBookPath: 'book',
+    };
+  } else if (endpoint.indexOf('5dscw') !== -1) {
+    options = {
+      selectorOfWait: '#content',
+      contentId: 'content',
       delimiterInTitle: '-',
       prefixOfBookPath: 'book',
     };
