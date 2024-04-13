@@ -10,21 +10,27 @@ const defaultEnv = {
   },
 };
 
-async function getNextPageRef(page) {
+async function getNextPageRefInfo(page) {
   const result = await page.evaluate(() => {
     const aLinks = document.getElementsByTagName('a');
     const { length } = aLinks;
+    let nextPageRefInfo = {};
     for (let i = 0; i < length; i += 1) {
       const aLink = aLinks[i];
-      txt = aLink.text.trim();
-      if (txt.indexOf('下一页') !== -1 || txt.indexOf('下一章') !== -1) {
-        return aLink.href;
+      txt = aLink.text;
+      if (txt.indexOf('下一页') !== -1) {
+        nextPageRefInfo = { nextPageRef: aLink.href, isNextPageExist: true };
+        return JSON.stringify(nextPageRefInfo);
+      } else if (txt.indexOf('下一章') !== -1) {
+        nextPageRefInfo = { nextPageRef: aLink.href, isNextPageExist: false };
+        return JSON.stringify(nextPageRefInfo);
       }
     }
-    return null;
+    return JSON.stringify(nextPageRefInfo);
   });
 
-  return result;
+  const obj = JSON.parse(result);
+  return obj;
 }
 
 async function getNovelName(page) {
@@ -55,6 +61,7 @@ async function getContentNodeInfo(page) {
     let maxContentNode = null;
     let largestTxtCount = 0;
     let contentNode = null;
+    let isMultiPages = false;
 
     function traverseNodesByDepthFirst(currentNode) {
       const { childNodes } = currentNode;
@@ -82,11 +89,27 @@ async function getContentNodeInfo(page) {
       }
     }
 
+    function traverseALinks() {
+      const aLinks = document.getElementsByTagName('a');
+      const { length } = aLinks;
+      for (let i = 0; i < length; i += 1) {
+        const aLink = aLinks[i];
+        txt = aLink.text;
+        if (txt.indexOf('下一页') !== -1 && aLinks[i - 2].text.indexOf('上一章') !== -1) {
+          isMultiPages = true;
+          return;
+        }
+      }
+    }
+
     traverseNodesByDepthFirst(document.body);
     if (!maxContentNode) return null;
 
     traverseNodesByParent(maxContentNode);
-    const contentNodeInfo = { id: contentNode.id, className: contentNode.className };
+
+    traverseALinks();
+
+    const contentNodeInfo = { id: contentNode.id, className: contentNode.className, isMultiPages };
     return JSON.stringify(contentNodeInfo);
   });
 
@@ -94,7 +117,7 @@ async function getContentNodeInfo(page) {
   return obj;
 }
 
-async function getContent(page, contentNodeInfo) {
+async function getContent(page, id, className) {
   const result = await page.evaluate(
     (arg1, arg2) => {
       let contentNode;
@@ -131,8 +154,8 @@ async function getContent(page, contentNodeInfo) {
 
       return txt;
     },
-    contentNodeInfo.id,
-    contentNodeInfo.className
+    id,
+    className
   );
 
   return result;
@@ -212,51 +235,58 @@ async function evalNovel(endpoint) {
 
   const contentNodeInfo = await getContentNodeInfo(page);
 
-  const { id, className } = contentNodeInfo;
-  let selectorOfWait;
-  if (id) {
-    selectorOfWait = `#${id}`;
-  } else {
-    selectorOfWait = `.${className}`;
-  }
+  const { id, className, isMultiPages } = contentNodeInfo;
+
+  const selectorOfWait = id ? `#${id}` : `.${className}`;
+
   console.log(
-    `NovelName: ${novelName}\nIndexPageUrl: ${indexPageUrl}\nContentNodeId: ${id}\nContentNodeClassName: ${className}`
+    `NovelName: ${novelName}\nIndexPageUrl: ${indexPageUrl}\nselectorOfWait: ${selectorOfWait}\nisMultiPages: ${contentNodeInfo.isMultiPages}`
   );
 
   let catalog = '';
   let index = 0;
   let content = '';
   let chapterHeader = '';
+  let txt = '';
 
   for (;;) {
-    const txt = await getContent(page, contentNodeInfo);
-    if (!txt) {
+    const origTxt = await getContent(page, id, className);
+    if (!origTxt) {
       console.log('\n\n没有发现正文，退出');
       break;
     }
 
-    chapterHeader = await getChapterHeader(page);
-    console.log(chapterHeader);
-    catalog += `    <div><a id="anchor_catalog_${index}" href="#anchor_${index}">${chapterHeader}</a></div>\n`;
-    content += `  <div id="anchor_${index}" class="header">\n    <div class="chapter_title"> ${chapterHeader}</div>\n`;
+    txt += origTxt;
 
-    const nextPageRef = await getNextPageRef(page);
+    const nextPageRefInfo = await getNextPageRefInfo(page);
+    const { nextPageRef, isNextPageExist } = nextPageRefInfo;
+    const isChapterFinished = !isMultiPages || !isNextPageExist;
+    const isLastChapter = !nextPageRef || nextPageRef === indexPageUrl;
 
-    let pre = '';
-    if (index !== 0) {
-      pre += `    <a href="#anchor_${index - 1}">上一章</a>\n`;
+    if (isChapterFinished || isLastChapter) {
+      chapterHeader = await getChapterHeader(page);
+      console.log(chapterHeader);
+      catalog += `    <div><a id="anchor_catalog_${index}" href="#anchor_${index}">${chapterHeader}</a></div>\n`;
+      content += `  <div id="anchor_${index}" class="header">\n    <div class="chapter_title"> ${chapterHeader}</div>\n`;
+
+      let pre = '';
+      if (index !== 0) {
+        pre += `    <a href="#anchor_${index - 1}">上一章</a>\n`;
+      }
+      let next = '';
+      if (nextPageRef) {
+        next = `    <a href="#anchor_${index + 1}">下一章</a>\n`;
+      }
+      next += '  </div>';
+      content += `${pre}    <a href="#anchor_catalog_${index}">返回目录</a>\n${next}\n`;
+      index += 1;
+
+      content += `  <div class="content">${txt}  </div>`;
+
+      txt = '';
     }
-    let next = '';
-    if (nextPageRef) {
-      next = `    <a href="#anchor_${index + 1}">下一章</a>\n`;
-    }
-    next += '  </div>';
-    content += `${pre}    <a href="#anchor_catalog_${index}">返回目录</a>\n${next}\n`;
-    content += `  <div class="content">${txt}  </div>`;
 
-    index += 1;
-
-    if (!nextPageRef || nextPageRef === indexPageUrl) {
+    if (isLastChapter) {
       console.log('\n\n下载完成');
       break;
     }
