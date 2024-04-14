@@ -68,11 +68,12 @@ async function getContentNodeInfo(page) {
       for (let i = 0; i < length; i += 1) {
         const child = childNodes[i];
         const { nodeName, nodeValue } = child;
-        if (nodeName === 'SCRIPT') return;
+        if (nodeName === 'SCRIPT') continue;
 
         if (nodeName === '#text' && nodeValue.length > largestTxtCount) {
           largestTxtNode = child;
           largestTxtCount = nodeValue.length;
+          continue;
         }
 
         traverseNodesByDepthFirst(child);
@@ -107,9 +108,13 @@ async function getContentNodeInfo(page) {
 
     const contentNode = findParent(largestTxtNode);
 
-    const isMultiPages = checkMultiPages();
+    const isMultiPagesInOneChapter = checkMultiPages();
 
-    const contentNodeInfo = { id: contentNode.id, className: contentNode.className, isMultiPages };
+    const contentNodeInfo = {
+      id: contentNode.id,
+      className: contentNode.className,
+      isMultiPagesInOneChapter,
+    };
     return JSON.stringify(contentNodeInfo);
   });
 
@@ -240,12 +245,12 @@ async function evalNovel(endpoint) {
     process.exit(1);
   }
 
-  const { id, className, isMultiPages } = contentNodeInfo;
+  const { id, className, isMultiPagesInOneChapter } = contentNodeInfo;
 
-  const selectorOfWait = id ? `#${id}` : `.${className}`;
+  const selectorOfContent = id ? `#${id}` : `.${className}`;
 
   console.log(
-    `NovelName: ${novelName}\nIndexPageUrl: ${indexPageUrl}\nselectorOfWait: ${selectorOfWait}\nisMultiPages: ${contentNodeInfo.isMultiPages}`
+    `NovelName: ${novelName}\nIndexPageUrl: ${indexPageUrl}\nselectorOfWait: ${selectorOfContent}\nisMultiPages: ${contentNodeInfo.isMultiPages}`
   );
 
   let catalog = '';
@@ -265,7 +270,7 @@ async function evalNovel(endpoint) {
 
     const nextPageRefInfo = await getNextPageRefInfo(page);
     const { nextPageRef, isNextPageExist } = nextPageRefInfo;
-    const isChapterFinished = !isMultiPages || !isNextPageExist;
+    const isChapterFinished = !isMultiPagesInOneChapter || !isNextPageExist;
     const isLastChapter = !nextPageRef || nextPageRef === indexPageUrl;
 
     if (isChapterFinished || isLastChapter) {
@@ -298,7 +303,7 @@ async function evalNovel(endpoint) {
 
     try {
       await page.goto(nextPageRef);
-      await page.waitForSelector(selectorOfWait, {
+      await page.waitForSelector(selectorOfContent, {
         timeout: 5000,
       });
     } catch (error) {
