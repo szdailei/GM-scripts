@@ -3,7 +3,6 @@ import { assert } from 'puppeteer-core';
 
 const defaultEnv = {
   PUPPETEER_EXECUTABLE_PATH: '/usr/bin/chromium',
-  PROXY: 'http://localhost:7890',
   viewPort: {
     width: 1920,
     height: 1080,
@@ -70,12 +69,16 @@ async function getContentNodeInfo(page) {
       const { length } = childNodes;
       for (let i = 0; i < length; i += 1) {
         const child = childNodes[i];
-        if (child.nodeName === '#text' && child.nodeValue.length > largestTxtCount) {
+        const { nodeName, nodeValue } = { child };
+        if (nodeName === 'SCRIPT') return;
+
+        if (nodeName === '#text' && nodeValue.length > largestTxtCount) {
           maxContentNode = child;
-          largestTxtCount = maxContentNode.nodeValue.length;
-        } else if (child.nodeName !== 'SCRIPT') {
-          traverseNodesByDepthFirst(child);
+          largestTxtCount = nodeValue.length;
+          return;
         }
+
+        traverseNodesByDepthFirst(child);
       }
     }
 
@@ -84,9 +87,9 @@ async function getContentNodeInfo(page) {
       if (currentParent.nodeName !== 'P') {
         contentNode = currentParent;
         return;
-      } else {
-        traverseNodesByParent(currentParent);
       }
+
+      traverseNodesByParent(currentParent);
     }
 
     function traverseALinks() {
@@ -112,6 +115,8 @@ async function getContentNodeInfo(page) {
     const contentNodeInfo = { id: contentNode.id, className: contentNode.className, isMultiPages };
     return JSON.stringify(contentNodeInfo);
   });
+
+  if (!result) return null;
 
   const obj = JSON.parse(result);
   return obj;
@@ -222,8 +227,6 @@ function createStartOfHtml(indexPageUrlWithTextFragment, novelName) {
 async function evalNovel(endpoint) {
   const browser = await puppeteer.launch({
     executablePath: defaultEnv.PUPPETEER_EXECUTABLE_PATH,
-    // args: [`--proxy-server=${defaultEnv.PROXY}`, '--no-sandbox', '--disabled-setupid-sandbox'],
-    // args: ['--no-sandbox', '--disabled-setupid-sandbox'],
     headless: 'new',
     defaultViewport: defaultEnv.viewPort,
   });
@@ -234,6 +237,10 @@ async function evalNovel(endpoint) {
   const indexPageUrl = await getIndexPageUrl(page);
 
   const contentNodeInfo = await getContentNodeInfo(page);
+  if (!contentNodeInfo) {
+    console.log('\n\n${endpoint}的网址没有正文，无法开始下载');
+    process.exit(1);
+  }
 
   const { id, className, isMultiPages } = contentNodeInfo;
 
@@ -252,7 +259,7 @@ async function evalNovel(endpoint) {
   for (;;) {
     const origTxt = await getContent(page, id, className);
     if (!origTxt) {
-      console.log('\n\n没有发现正文，退出');
+      console.log('\n\n${page.url}的网址没有正文，提前结束下载');
       break;
     }
 
