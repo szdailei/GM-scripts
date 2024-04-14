@@ -57,10 +57,8 @@ async function getChapterHeader(page) {
 
 async function getContentNodeInfo(page) {
   const result = await page.evaluate(() => {
-    let maxContentNode = null;
+    let largestTxtNode = null;
     let largestTxtCount = 0;
-    let contentNode = null;
-    let isMultiPages = false;
 
     function traverseNodesByDepthFirst(currentNode) {
       const { childNodes } = currentNode;
@@ -69,48 +67,47 @@ async function getContentNodeInfo(page) {
       const { length } = childNodes;
       for (let i = 0; i < length; i += 1) {
         const child = childNodes[i];
-        const { nodeName, nodeValue } = { child };
+        const { nodeName, nodeValue } = child;
         if (nodeName === 'SCRIPT') return;
 
         if (nodeName === '#text' && nodeValue.length > largestTxtCount) {
-          maxContentNode = child;
+          largestTxtNode = child;
           largestTxtCount = nodeValue.length;
-          return;
         }
 
         traverseNodesByDepthFirst(child);
       }
     }
 
-    function traverseNodesByParent(currentNode) {
+    function findParent(currentNode) {
       const currentParent = currentNode.parentNode;
       if (currentParent.nodeName !== 'P') {
-        contentNode = currentParent;
-        return;
+        return currentParent;
       }
 
-      traverseNodesByParent(currentParent);
+      const contentNode = findParent(currentParent);
+      return contentNode;
     }
 
-    function traverseALinks() {
+    function checkMultiPages() {
       const aLinks = document.getElementsByTagName('a');
       const { length } = aLinks;
       for (let i = 0; i < length; i += 1) {
         const aLink = aLinks[i];
         txt = aLink.text;
         if (txt.indexOf('下一页') !== -1 && aLinks[i - 2].text.indexOf('上一章') !== -1) {
-          isMultiPages = true;
-          return;
+          return true;
         }
       }
+      return false;
     }
 
     traverseNodesByDepthFirst(document.body);
-    if (!maxContentNode) return null;
+    if (!largestTxtNode) return null;
 
-    traverseNodesByParent(maxContentNode);
+    const contentNode = findParent(largestTxtNode);
 
-    traverseALinks();
+    const isMultiPages = checkMultiPages();
 
     const contentNodeInfo = { id: contentNode.id, className: contentNode.className, isMultiPages };
     return JSON.stringify(contentNodeInfo);
@@ -237,8 +234,9 @@ async function evalNovel(endpoint) {
   const indexPageUrl = await getIndexPageUrl(page);
 
   const contentNodeInfo = await getContentNodeInfo(page);
+
   if (!contentNodeInfo) {
-    console.log('\n\n${endpoint}的网址没有正文，无法开始下载');
+    console.log(`\n\n${endpoint} 网址没有正文，无法开始下载`);
     process.exit(1);
   }
 
@@ -259,7 +257,7 @@ async function evalNovel(endpoint) {
   for (;;) {
     const origTxt = await getContent(page, id, className);
     if (!origTxt) {
-      console.log('\n\n${page.url}的网址没有正文，提前结束下载');
+      console.log(`\n\n${page.url} 网址没有正文，提前结束下载`);
       break;
     }
 
