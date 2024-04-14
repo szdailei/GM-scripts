@@ -70,9 +70,11 @@ async function getContentNodeInfo(page) {
         const { nodeName, nodeValue } = child;
         if (nodeName === 'SCRIPT') continue;
 
-        if (nodeName === '#text' && nodeValue.length > largestTxtCount) {
-          largestTxtNode = child;
-          largestTxtCount = nodeValue.length;
+        if (nodeName === '#text') {
+          if (nodeValue.length > largestTxtCount) {
+            largestTxtNode = child;
+            largestTxtCount = nodeValue.length;
+          }
           continue;
         }
 
