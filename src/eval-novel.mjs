@@ -252,7 +252,7 @@ async function evalNovel(endpoint) {
   const selectorOfContent = id ? `#${id}` : `.${className}`;
 
   console.log(
-    `NovelName: ${novelName}\nIndexPageUrl: ${indexPageUrl}\nselectorOfWait: ${selectorOfContent}\nisMultiPages: ${contentNodeInfo.isMultiPages}`
+    `NovelName: ${novelName}\nIndexPageUrl: ${indexPageUrl}\nselectorOfWait: ${selectorOfContent}\nisMultiPagesInOneChapter: ${isMultiPagesInOneChapter}`
   );
 
   let catalog = '';
