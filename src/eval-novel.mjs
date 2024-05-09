@@ -221,7 +221,7 @@ function createStartOfHtml(indexPageUrlWithTextFragment, novelName) {
 </head>
 
 <body>
-  <a class="url" target="_blank" href="${indexPageUrlWithTextFragment}">${novelName} 主页</a>
+  <a class="url" target="_blank" href="${indexPageUrlWithTextFragment}">${novelName}</a>
   <div id="catalog" class="catalog">
 `;
 
@@ -293,13 +293,13 @@ async function evalNovel(endpoint) {
       content += `${pre}    <a href="#anchor_catalog_${index}">返回目录</a>\n${next}\n`;
       index += 1;
 
-      content += `  <div class="content">${txt}  </div>`;
+      content += `  <div class="content">${txt}  </div>\n`;
 
       txt = '';
     }
 
     if (isLastChapter) {
-      console.log('\n\n下载完成');
+      console.log(`\n\n《${novelName}》下载完成`);
       break;
     }
 
@@ -309,7 +309,7 @@ async function evalNovel(endpoint) {
         timeout: 5000,
       });
     } catch (error) {
-      console.log(`${error.message}\n\n下载了部分章节`);
+      console.log(`${error.message}\n\n《${novelName}》下载了部分章节`);
       break;
     }
   }
