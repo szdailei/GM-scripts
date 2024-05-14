@@ -1,0 +1,20 @@
+#!/bin/bash
+
+if [ "$EUID" -ne 0 ]; then
+	echo "Please run as root"
+	exit 1
+fi
+
+if [[ "$1" != "0" && "$1" != "1" ]]; then
+	printf "The script stopped.\nPlease run 'set-touchpad-inhibited 0' to enable touchpad, or 'set-touchpad-inhibited 1' to disable touchpad.\n"
+	exit 2
+fi
+
+TOUCHPAD_SYSFS_MULTI_LINES=$(cat /proc/bus/input/devices | perl -00 -ne 'print if /Touchpad/i' | perl -ne 'print if /Sysfs=.*/i')
+while read TOUCHPAD_SYSFS_ONE_LINE
+do
+	TOUCHPAD_SYSFS=${TOUCHPAD_SYSFS_ONE_LINE#*=}
+	TOUCHPAD_INHIBITED_FILE="/sys${TOUCHPAD_SYSFS}/inhibited"
+	printf "Setting ${TOUCHPAD_INHIBITED_FILE} to $1\n"
+	printf "$1" > ${TOUCHPAD_INHIBITED_FILE}
+done <<< "${TOUCHPAD_SYSFS_MULTI_LINES}"
