@@ -1,0 +1,2 @@
+ACTION=="add", KERNEL=="mouse*", ENV{ID_BUS}=="usb", RUN+="/usr/local/bin/set-touchpad-inhibited 1"
+ACTION=="remove", KERNEL=="mouse*", ENV{ID_BUS}=="usb", RUN+="/usr/local/bin/set-touchpad-inhibited 0"
