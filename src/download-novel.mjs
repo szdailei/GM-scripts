@@ -15,7 +15,7 @@ async function main() {
   const { argv } = process;
   if (argv.length !== 3) {
     help();
-    process.exit(0);
+    process.exit(1);
   }
 
   const endpoint = argv[2];
