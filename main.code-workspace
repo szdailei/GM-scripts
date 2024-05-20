@@ -11,6 +11,8 @@
       "overrideConfigFile": ".eslintrc.cjs"
     },
     "prettier.configPath": "prettier.config.cjs",
-    "stylelint.configFile": "stylelint.config.cjs"
+    "stylelint.configFile": "stylelint.config.cjs",
+    "editor.fontSize": 22,
+    "editor.formatOnSave": true
   }
 }

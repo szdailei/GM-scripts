@@ -39,16 +39,19 @@ async function getNovelName(page) {
   for (let i = 0; i < length; i += 1) {
     const char = title[i];
     if (char === ' ' || char === '-' || char === '_' || char === ',') {
-      return pureTitle;
+      break;
     }
     pureTitle += char;
   }
-  return title;
+  const fields = pureTitle.split('最新章节')
+  return fields[0];
 }
 
 async function getChapterHeader(page) {
   return page.evaluate(() => {
-    const headerElement = document.getElementsByTagName('h1')[0];
+    const headerElements = document.getElementsByTagName('h1');
+    const { length } = headerElements;
+    let headerElement = headerElements[length - 1]
     if (!headerElement) return '';
 
     return headerElement.textContent.trim();
@@ -177,7 +180,7 @@ async function getIndexPageUrl(page) {
     for (let i = 0; i < length; i += 1) {
       const aLink = aLinks[i];
       txt = aLink.text.trim();
-      if (txt === '目录' || txt === '书页' || txt === '章节目录' || txt === '书 页' || txt.indexOf('返回目录') !== -1) {
+      if (txt === '目录' || txt === '书页' || txt === '章节目录' || txt === '书 页' || txt === '章节列表' || txt.indexOf('返回目录') !== -1) {
         return aLink.href;
       }
     }
@@ -261,7 +264,7 @@ async function evalNovel(endpoint) {
   let chapterHeader = '';
   let txt = '';
 
-  for (;;) {
+  for (; ;) {
     const origTxt = await getContent(page, id, className);
     if (!origTxt) {
       console.log(`\n\n${page.url} 网址没有正文，提前结束下载`);
