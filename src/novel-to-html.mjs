@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import fs from "fs";
 import os from 'os';
 import { join } from 'path';
@@ -14,12 +16,12 @@ function main() {
     process.exit(1);
   }
 
-  const inputNovelFile = argv[2];
-  const novelName = inputNovelFile.spilit('.txt')[0]
+  const inputFileName = argv[2];
+  const novelName = inputFileName.split('.txt')[0]
 
   const userHomeDir = os.homedir();
   const outputDir = `${userHomeDir}/Downloads/Novel/`;
-  const outputFile = `${join(outputDir, novelName)}.html`;
+  const outputFileName = `${join(outputDir, novelName)}.html`;
 
   let html = `<!DOCTYPE html>
 <html lang="zh">
@@ -39,19 +41,20 @@ function main() {
   <div class="content">
 `
 
-  const novel = fs.promises.readFile(inputNovelFile, "utf8");
+  const novel = fs.readFileSync(inputFileName, "utf8");
   const lines = novel.split("\n");
 
-  const length = { lines };
+  const { length } = lines;
   for (let i = 0; i < length; i += 1) {
-    html += `${lines[i]}\n<br>`;
+    const line = lines[i]
+    html += `${line}\n<br>`;
   }
 
   html += `  </div>
 </body>
 </html>`
 
-  fs.promises.writeFile(outputFile, html);
+  fs.writeFileSync(outputFileName, html);
 }
 
 main();
