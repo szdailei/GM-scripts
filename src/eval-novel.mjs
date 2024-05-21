@@ -23,6 +23,9 @@ async function getNextPageRefInfo(page) {
       } else if (txt.indexOf('下一章') !== -1) {
         nextPageRefInfo = { nextPageRef: aLink.href, isNextPageExist: false };
         return JSON.stringify(nextPageRefInfo);
+      } else if (txt.indexOf('下一篇') !== -1) {
+        nextPageRefInfo = { nextPageRef: aLink.href, isNextPageExist: false };
+        return JSON.stringify(nextPageRefInfo);
       }
     }
     return JSON.stringify(nextPageRefInfo);
@@ -32,7 +35,7 @@ async function getNextPageRefInfo(page) {
   return obj;
 }
 
-async function getNovelName(page) {
+async function getNovelNameByIndexPageUrl(page) {
   const title = await page.title();
   let pureTitle = '';
   const { length } = title;
@@ -43,8 +46,27 @@ async function getNovelName(page) {
     }
     pureTitle += char;
   }
-  const fields = pureTitle.split('最新章节')
-  return fields[0];
+  if (pureTitle.indexOf('全文') !== -1) return pureTitle.split('全文')[0]
+  if (pureTitle.indexOf('最新章节') !== -1) return pureTitle.split('最新章节')[0]
+
+  return pureTitle
+}
+
+async function getIndexPageLinks(page) {
+  const result = await page.evaluate(() => {
+    const aLinks = document.getElementsByTagName('a');
+    const indexPageLinks = []
+    const { length } = aLinks;
+    for (let i = 0; i < length; i += 1) {
+      const aLink = aLinks[i];
+      const indexPageLink = { href: aLink.href, text: aLink.textContent }
+      indexPageLinks.push(indexPageLink)
+    }
+    return JSON.stringify(indexPageLinks);
+  })
+
+  const obj = JSON.parse(result)
+  return obj
 }
 
 async function getChapterHeader(page) {
@@ -52,10 +74,21 @@ async function getChapterHeader(page) {
     const headerElements = document.getElementsByTagName('h1');
     const { length } = headerElements;
     let headerElement = headerElements[length - 1]
-    if (!headerElement) return '';
+    if (!headerElement) return null;
 
     return headerElement.textContent.trim();
   });
+}
+
+function getChapterHeaderByIndexPageLinks(chapterUrl, indexPageLinks) {
+  const { length } = indexPageLinks;
+  for (let i = 0; i < length; i += 1) {
+    const indexPageLink = indexPageLinks[i];
+    if (indexPageLink.href === chapterUrl) {
+      return indexPageLink.text
+    }
+  }
+  return null;
 }
 
 async function getContentNodeInfo(page) {
@@ -71,7 +104,7 @@ async function getContentNodeInfo(page) {
       for (let i = 0; i < length; i += 1) {
         const child = childNodes[i];
         const { nodeName, nodeValue } = child;
-        if (nodeName === 'SCRIPT') continue;
+        if (nodeName === 'SCRIPT' || nodeName === 'HEADER' || nodeName === 'FOOTER' || nodeName === 'LI') continue;
 
         if (nodeName === '#text') {
           if (nodeValue.length > largestTxtCount) {
@@ -139,7 +172,8 @@ async function getContent(page, id, className) {
       if (id) {
         contentNode = document.getElementById(id);
       } else {
-        contentNode = document.getElementsByClassName(className)[0];
+        const theFirstClassName = className.split(' ')[0]
+        contentNode = document.getElementsByClassName(theFirstClassName)[0];
       }
       if (!contentNode) return null;
 
@@ -180,7 +214,7 @@ async function getIndexPageUrl(page) {
     for (let i = 0; i < length; i += 1) {
       const aLink = aLinks[i];
       txt = aLink.text.trim();
-      if (txt === '目录' || txt === '书页' || txt === '章节目录' || txt === '书 页' || txt === '章节列表' || txt.indexOf('返回目录') !== -1) {
+      if (txt.indexOf('目录') !== -1) {
         return aLink.href;
       }
     }
@@ -204,11 +238,11 @@ function createStartOfHtml(indexPageUrlWithTextFragment, novelName) {
   }
   .catalog {
     display:grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns:1fr 1fr 1fr;
   }
   .header {
     display:grid;
-    grid-template-columns: auto auto auto auto;
+    grid-template-columns:auto auto auto auto;
     align-items:center;
     font-weight:700;
     font-size:20px;
@@ -224,7 +258,7 @@ function createStartOfHtml(indexPageUrlWithTextFragment, novelName) {
 </head>
 
 <body>
-  <a class="url" target="_blank" href="${indexPageUrlWithTextFragment}">${novelName}</a>
+  <div class="url"><a target="_blank" href="${indexPageUrlWithTextFragment}">${novelName}</a></div>
   <div id="catalog" class="catalog">
 `;
 
@@ -236,13 +270,18 @@ async function evalNovel(endpoint) {
     executablePath: defaultEnv.PUPPETEER_EXECUTABLE_PATH,
     headless: 'new',
     defaultViewport: defaultEnv.viewPort,
+    args: ['--proxy-server=localhost:7890'],
   });
 
   const page = await browser.newPage();
   await page.goto(endpoint);
-  const novelName = await getNovelName(page);
   const indexPageUrl = await getIndexPageUrl(page);
 
+  await page.goto(indexPageUrl);
+  const novelName = await getNovelNameByIndexPageUrl(page);
+  const indexPageLinks = await getIndexPageLinks(page);
+
+  await page.goto(endpoint);
   const contentNodeInfo = await getContentNodeInfo(page);
 
   if (!contentNodeInfo) {
@@ -252,7 +291,13 @@ async function evalNovel(endpoint) {
 
   const { id, className, isMultiPagesInOneChapter } = contentNodeInfo;
 
-  const selectorOfContent = id ? `#${id}` : `.${className}`;
+  let selectorOfContent
+  if (id) {
+    selectorOfContent = `#${id}`
+  } else {
+    const theFirstClassName = className.split(' ')[0]
+    selectorOfContent = `.${theFirstClassName}`
+  }
 
   console.log(
     `NovelName: ${novelName}\nIndexPageUrl: ${indexPageUrl}\nselectorOfWait: ${selectorOfContent}\nisMultiPagesInOneChapter: ${isMultiPagesInOneChapter}`
@@ -267,7 +312,7 @@ async function evalNovel(endpoint) {
   for (; ;) {
     const origTxt = await getContent(page, id, className);
     if (!origTxt) {
-      console.log(`\n\n${page.url} 网址没有正文，提前结束下载`);
+      console.log(`\n\n${page.url()} 网址没有正文，提前结束下载`);
       break;
     }
 
@@ -280,20 +325,28 @@ async function evalNovel(endpoint) {
 
     if (isChapterFinished || isLastChapter) {
       chapterHeader = await getChapterHeader(page);
+      if (!chapterHeader) {
+        chapterHeader = getChapterHeaderByIndexPageLinks(page.url(), indexPageLinks)
+        if (!chapterHeader) {
+          console.log(`\n\nIndexPage没有 ${page.url()} 的链接，退出`);
+          break;
+        }
+      }
       console.log(chapterHeader);
+
       catalog += `    <div><a id="anchor_catalog_${index}" href="#anchor_${index}">${chapterHeader}</a></div>\n`;
       content += `  <div id="anchor_${index}" class="header">\n    <div class="chapter_title"> ${chapterHeader}</div>\n`;
 
       let pre = '';
       if (index !== 0) {
-        pre += `    <a href="#anchor_${index - 1}">上一章</a>\n`;
+        pre += `    <div><a href="#anchor_${index - 1}">上一章</a></div>\n`;
       }
       let next = '';
       if (nextPageRef) {
-        next = `    <a href="#anchor_${index + 1}">下一章</a>\n`;
+        next = `    <div><a href="#anchor_${index + 1}">下一章</a></div>\n`;
       }
       next += '  </div>';
-      content += `${pre}    <a href="#anchor_catalog_${index}">返回目录</a>\n${next}\n`;
+      content += `${pre}    <div><a href="#anchor_catalog_${index}">返回目录</a></div>\n${next}\n`;
       index += 1;
 
       content += `  <div class="content">${txt}  </div>\n`;
