@@ -133,18 +133,18 @@ async function getContentNodeInfo(page) {
     function checkMultiPages() {
       const aLinks = document.getElementsByTagName('a');
       const { length } = aLinks;
-      let prePage = false;
-      let nextPage = false;
+      let hasPrePageLink = false;
+      let hasNextPageLink = false;
       for (let i = 0; i < length; i += 1) {
         const aLink = aLinks[i];
         const txt = aLink.text;
         if (txt.indexOf('上一页') !== -1) {
-          prePage = true;
+          hasPrePageLink = true;
         } else if (txt.indexOf('下一页') !== -1) {
-          nextPage = true;
+          hasNextPageLink = true;
         }
       }
-      const isPair = prePage && nextPage;
+      const isPair = hasPrePageLink && hasNextPageLink;
       return !isPair;
     }
 
