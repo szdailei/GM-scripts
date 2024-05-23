@@ -36,44 +36,46 @@ async function getNextPageRefInfo(page) {
 }
 
 async function getNovelNameByIndexPageUrl(page) {
-  const title = await page.title();
-  let pureTitle = '';
-  const { length } = title;
+  const fullTitle = await page.title();
+  let realTitle = '';
+  const { length } = fullTitle;
   for (let i = 0; i < length; i += 1) {
-    const char = title[i];
+    const char = fullTitle[i];
     if (char === ' ' || char === '-' || char === '_' || char === ',') {
       break;
     }
-    pureTitle += char;
+    realTitle += char;
   }
-  if (pureTitle.indexOf('全文') !== -1) return pureTitle.split('全文')[0]
-  if (pureTitle.indexOf('最新章节') !== -1) return pureTitle.split('最新章节')[0]
 
-  return pureTitle
+  if (realTitle.indexOf('全文') !== -1) [realTitle] = realTitle.split('全文');
+  if (realTitle.indexOf('最新章节') !== -1) [realTitle] = realTitle.split('最新章节');
+  if (realTitle.indexOf('目录') !== -1) [realTitle] = realTitle.split('目录');
+
+  return realTitle;
 }
 
 async function getIndexPageLinks(page) {
   const result = await page.evaluate(() => {
     const aLinks = document.getElementsByTagName('a');
-    const indexPageLinks = []
+    const indexPageLinks = [];
     const { length } = aLinks;
     for (let i = 0; i < length; i += 1) {
       const aLink = aLinks[i];
-      const indexPageLink = { href: aLink.href, text: aLink.textContent }
-      indexPageLinks.push(indexPageLink)
+      const indexPageLink = { href: aLink.href, text: aLink.textContent };
+      indexPageLinks.push(indexPageLink);
     }
     return JSON.stringify(indexPageLinks);
-  })
+  });
 
-  const obj = JSON.parse(result)
-  return obj
+  const obj = JSON.parse(result);
+  return obj;
 }
 
 async function getChapterHeader(page) {
   return page.evaluate(() => {
     const headerElements = document.getElementsByTagName('h1');
     const { length } = headerElements;
-    let headerElement = headerElements[length - 1]
+    let headerElement = headerElements[length - 1];
     if (!headerElement) return null;
 
     return headerElement.textContent.trim();
@@ -85,7 +87,7 @@ function getChapterHeaderByIndexPageLinks(chapterUrl, indexPageLinks) {
   for (let i = 0; i < length; i += 1) {
     const indexPageLink = indexPageLinks[i];
     if (indexPageLink.href === chapterUrl) {
-      return indexPageLink.text
+      return indexPageLink.text;
     }
   }
   return null;
@@ -131,14 +133,19 @@ async function getContentNodeInfo(page) {
     function checkMultiPages() {
       const aLinks = document.getElementsByTagName('a');
       const { length } = aLinks;
+      let prePage = false;
+      let nextPage = false;
       for (let i = 0; i < length; i += 1) {
         const aLink = aLinks[i];
-        txt = aLink.text;
-        if (txt.indexOf('下一页') !== -1 && aLinks[i - 2].text.indexOf('上一章') !== -1) {
-          return true;
+        const txt = aLink.text;
+        if (txt.indexOf('上一页') !== -1) {
+          prePage = true;
+        } else if (txt.indexOf('下一页') !== -1) {
+          nextPage = true;
         }
       }
-      return false;
+      const isPair = prePage && nextPage;
+      return !isPair;
     }
 
     traverseNodesByDepthFirst(document.body);
@@ -172,7 +179,7 @@ async function getContent(page, id, className) {
       if (id) {
         contentNode = document.getElementById(id);
       } else {
-        const theFirstClassName = className.split(' ')[0]
+        const theFirstClassName = className.split(' ')[0];
         contentNode = document.getElementsByClassName(theFirstClassName)[0];
       }
       if (!contentNode) return null;
@@ -291,12 +298,12 @@ async function evalNovel(endpoint) {
 
   const { id, className, isMultiPagesInOneChapter } = contentNodeInfo;
 
-  let selectorOfContent
+  let selectorOfContent;
   if (id) {
-    selectorOfContent = `#${id}`
+    selectorOfContent = `#${id}`;
   } else {
-    const theFirstClassName = className.split(' ')[0]
-    selectorOfContent = `.${theFirstClassName}`
+    const theFirstClassName = className.split(' ')[0];
+    selectorOfContent = `.${theFirstClassName}`;
   }
 
   console.log(
@@ -309,7 +316,7 @@ async function evalNovel(endpoint) {
   let chapterHeader = '';
   let txt = '';
 
-  for (; ;) {
+  for (;;) {
     const origTxt = await getContent(page, id, className);
     if (!origTxt) {
       console.log(`\n\n${page.url()} 网址没有正文，提前结束下载`);
@@ -326,7 +333,7 @@ async function evalNovel(endpoint) {
     if (isChapterFinished || isLastChapter) {
       chapterHeader = await getChapterHeader(page);
       if (!chapterHeader) {
-        chapterHeader = getChapterHeaderByIndexPageLinks(page.url(), indexPageLinks)
+        chapterHeader = getChapterHeaderByIndexPageLinks(page.url(), indexPageLinks);
         if (!chapterHeader) {
           console.log(`\n\nIndexPage没有 ${page.url()} 的链接，退出`);
           break;
