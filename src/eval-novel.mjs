@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+/* eslint-disable no-await-in-loop */
 import puppeteer from 'puppeteer-core';
 import { assert } from 'puppeteer-core';
 
@@ -144,8 +146,8 @@ async function getContentNodeInfo(page) {
           hasNextPageLink = true;
         }
       }
-      const isPair = hasPrePageLink && hasNextPageLink;
-      return !isPair;
+      const isMultiPages = hasNextPageLink && !hasPrePageLink;
+      return isMultiPages;
     }
 
     traverseNodesByDepthFirst(document.body);
@@ -220,8 +222,8 @@ async function getIndexPageUrl(page) {
     const { length } = aLinks;
     for (let i = 0; i < length; i += 1) {
       const aLink = aLinks[i];
-      txt = aLink.text.trim();
-      if (txt.indexOf('目录') !== -1) {
+      const txt = aLink.text.trim();
+      if (txt.indexOf('目录') !== -1 || txt.indexOf('章节') !== -1) {
         return aLink.href;
       }
     }
@@ -283,7 +285,6 @@ async function evalNovel(endpoint) {
   const page = await browser.newPage();
   await page.goto(endpoint);
   const indexPageUrl = await getIndexPageUrl(page);
-
   await page.goto(indexPageUrl);
   const novelName = await getNovelNameByIndexPageUrl(page);
   const indexPageLinks = await getIndexPageLinks(page);
@@ -328,7 +329,7 @@ async function evalNovel(endpoint) {
     const nextPageRefInfo = await getNextPageRefInfo(page);
     const { nextPageRef, isNextPageExist } = nextPageRefInfo;
     const isChapterFinished = !isMultiPagesInOneChapter || !isNextPageExist;
-    const isLastChapter = !nextPageRef || nextPageRef === indexPageUrl;
+    const isLastChapter = !nextPageRef || nextPageRef === indexPageUrl || !nextPageRef.startsWith('http');
 
     if (isChapterFinished || isLastChapter) {
       chapterHeader = await getChapterHeader(page);
