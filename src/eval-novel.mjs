@@ -73,17 +73,6 @@ async function getIndexPageLinks(page) {
   return obj;
 }
 
-async function getChapterHeader(page) {
-  return page.evaluate(() => {
-    const headerElements = document.getElementsByTagName('h1');
-    const { length } = headerElements;
-    let headerElement = headerElements[length - 1];
-    if (!headerElement) return null;
-
-    return headerElement.textContent.trim();
-  });
-}
-
 function getChapterHeaderByIndexPageLinks(chapterUrl, indexPageLinks) {
   const { length } = indexPageLinks;
   for (let i = 0; i < length; i += 1) {
@@ -107,29 +96,25 @@ async function getContentNodeInfo(page) {
       const { length } = childNodes;
       for (let i = 0; i < length; i += 1) {
         const child = childNodes[i];
-        const { nodeName, nodeValue } = child;
-        if (nodeName === 'SCRIPT' || nodeName === 'HEADER' || nodeName === 'FOOTER' || nodeName === 'LI') continue;
-
-        if (nodeName === '#text') {
-          if (nodeValue.length > largestTxtCount) {
-            largestTxtNode = child;
-            largestTxtCount = nodeValue.length;
+        const { nodeName } = child;
+        if (nodeName !== 'SCRIPT' && nodeName !== 'HEADER' && nodeName !== 'FOOTER') {
+          const { children } = child;
+          if (children) {
+            const childrenLength = children.length;
+            let brCount = 0;
+            const txtCount = child.textContent.length;
+            for (let j = 0; j < childrenLength; j += 1) {
+              if (children[j].tagName === 'BR') brCount += 1;
+            }
+            if (brCount > 3 && txtCount > largestTxtCount) {
+              largestTxtNode = child;
+              largestTxtCount = txtCount;
+            } else {
+              traverseNodesByDepthFirst(child);
+            }
           }
-          continue;
         }
-
-        traverseNodesByDepthFirst(child);
       }
-    }
-
-    function findParent(currentNode) {
-      const currentParent = currentNode.parentNode;
-      if (currentParent.nodeName !== 'P') {
-        return currentParent;
-      }
-
-      const contentNode = findParent(currentParent);
-      return contentNode;
     }
 
     function checkMultiPages() {
@@ -153,7 +138,7 @@ async function getContentNodeInfo(page) {
     traverseNodesByDepthFirst(document.body);
     if (!largestTxtNode) return null;
 
-    const contentNode = findParent(largestTxtNode);
+    const contentNode = largestTxtNode;
 
     const isMultiPagesInOneChapter = checkMultiPages();
 
@@ -176,17 +161,15 @@ async function getContent(page, id, className) {
     (arg1, arg2) => {
       let contentNode;
 
-      const id = arg1;
-      const className = arg2;
-      if (id) {
-        contentNode = document.getElementById(id);
+      if (arg1) {
+        contentNode = document.getElementById(arg1);
       } else {
-        const theFirstClassName = className.split(' ')[0];
-        contentNode = document.getElementsByClassName(theFirstClassName)[0];
+        const theFirstClassName = arg2.split(' ')[0];
+        [contentNode] = document.getElementsByClassName(theFirstClassName);
       }
       if (!contentNode) return null;
 
-      const childNodes = contentNode.childNodes;
+      const { childNodes } = contentNode;
       let txt = '';
 
       let isFirstLine = true;
@@ -314,10 +297,19 @@ async function evalNovel(endpoint) {
   let catalog = '';
   let index = 0;
   let content = '';
-  let chapterHeader = '';
+  let chapterHeader;
   let txt = '';
 
   for (;;) {
+    if (!chapterHeader) {
+      chapterHeader = getChapterHeaderByIndexPageLinks(page.url(), indexPageLinks);
+      if (!chapterHeader) {
+        console.log(`\n\nIndexPage没有 ${page.url()} 的链接，退出`);
+        break;
+      }
+      console.log(chapterHeader);
+    }
+
     const origTxt = await getContent(page, id, className);
     if (!origTxt) {
       console.log(`\n\n${page.url()} 网址没有正文，提前结束下载`);
@@ -332,18 +324,9 @@ async function evalNovel(endpoint) {
     const isLastChapter = !nextPageRef || nextPageRef === indexPageUrl || !nextPageRef.startsWith('http');
 
     if (isChapterFinished || isLastChapter) {
-      chapterHeader = await getChapterHeader(page);
-      if (!chapterHeader) {
-        chapterHeader = getChapterHeaderByIndexPageLinks(page.url(), indexPageLinks);
-        if (!chapterHeader) {
-          console.log(`\n\nIndexPage没有 ${page.url()} 的链接，退出`);
-          break;
-        }
-      }
-      console.log(chapterHeader);
-
       catalog += `    <div><a id="anchor_catalog_${index}" href="#anchor_${index}">${chapterHeader}</a></div>\n`;
       content += `  <div id="anchor_${index}" class="header">\n    <div class="chapter_title"> ${chapterHeader}</div>\n`;
+      chapterHeader = null;
 
       let pre = '';
       if (index !== 0) {
@@ -378,14 +361,12 @@ async function evalNovel(endpoint) {
     }
   }
 
-  const indexPageUrlWithTextFragment = `${indexPageUrl}#:~:text=${chapterHeader}`;
-
   catalog += '  </div>\n\n';
   const end = `
 </body>
 </html>
 `;
-  const start = createStartOfHtml(indexPageUrlWithTextFragment, novelName);
+  const start = createStartOfHtml(indexPageUrl, novelName);
   const html = start + catalog + content + end;
 
   await browser.close();
