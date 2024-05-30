@@ -97,21 +97,29 @@ async function getContentNodeInfo(page) {
       for (let i = 0; i < length; i += 1) {
         const child = childNodes[i];
         const { nodeName } = child;
-        if (nodeName !== 'SCRIPT' && nodeName !== 'HEADER' && nodeName !== 'FOOTER') {
-          const { children } = child;
-          if (children) {
-            const childrenLength = children.length;
-            let brCount = 0;
-            const txtCount = child.textContent.length;
-            for (let j = 0; j < childrenLength; j += 1) {
-              if (children[j].tagName === 'BR') brCount += 1;
+        const txtCount = child.textContent.length;
+        const { children } = child;
+        if (
+          nodeName !== 'SCRIPT' &&
+          nodeName !== 'HEADER' &&
+          nodeName !== 'FOOTER' &&
+          children &&
+          txtCount > largestTxtCount
+        ) {
+          const childrenLength = children.length;
+          let isContentNode = false;
+          for (let j = 0, brCount = 0; j < childrenLength; j += 1) {
+            if (children[j].tagName === 'BR') brCount += 1;
+            if (brCount >= 2) {
+              isContentNode = true;
+              break;
             }
-            if (brCount > 3 && txtCount > largestTxtCount) {
-              largestTxtNode = child;
-              largestTxtCount = txtCount;
-            } else {
-              traverseNodesByDepthFirst(child);
-            }
+          }
+          if (isContentNode) {
+            largestTxtNode = child;
+            largestTxtCount = txtCount;
+          } else {
+            traverseNodesByDepthFirst(child);
           }
         }
       }
