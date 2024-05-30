@@ -86,7 +86,7 @@ function getChapterHeaderByIndexPageLinks(chapterUrl, indexPageLinks) {
 
 async function getContentNodeInfo(page) {
   const result = await page.evaluate(() => {
-    let largestTxtNode = null;
+    let largestTxtNode;
     let largestTxtCount = 0;
 
     function traverseNodesByDepthFirst(currentNode) {
@@ -96,9 +96,10 @@ async function getContentNodeInfo(page) {
       const { length } = childNodes;
       for (let i = 0; i < length; i += 1) {
         const child = childNodes[i];
-        const { nodeName } = child;
+        let isPossibleContentNode = false;
+
+        const { nodeName, children } = child;
         const txtCount = child.textContent.length;
-        const { children } = child;
         if (
           nodeName !== 'SCRIPT' &&
           nodeName !== 'HEADER' &&
@@ -107,18 +108,19 @@ async function getContentNodeInfo(page) {
           txtCount > largestTxtCount
         ) {
           const childrenLength = children.length;
-          let isContentNode = false;
-          for (let j = 0, brCount = 0; j < childrenLength; j += 1) {
-            if (children[j].tagName === 'BR') brCount += 1;
-            if (brCount >= 2) {
-              isContentNode = true;
-              break;
+          if (childrenLength >= 3) {
+            for (let j = 0, brCount = 0; j < childrenLength; j += 1) {
+              if (brCount >= 3) {
+                isPossibleContentNode = true;
+                largestTxtNode = child;
+                largestTxtCount = txtCount;
+                break;
+              }
+
+              if (children[j].tagName === 'BR') brCount += 1;
             }
           }
-          if (isContentNode) {
-            largestTxtNode = child;
-            largestTxtCount = txtCount;
-          } else {
+          if (!isPossibleContentNode) {
             traverseNodesByDepthFirst(child);
           }
         }
