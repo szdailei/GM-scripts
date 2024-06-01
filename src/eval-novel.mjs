@@ -96,7 +96,6 @@ async function getContentNodeInfo(page) {
       const { length } = childNodes;
       for (let i = 0; i < length; i += 1) {
         const child = childNodes[i];
-        let isPossibleContentNode = false;
 
         const { nodeName, children } = child;
         const txtCount = child.textContent.length;
@@ -108,19 +107,15 @@ async function getContentNodeInfo(page) {
           txtCount > largestTxtCount
         ) {
           const childrenLength = children.length;
-          if (childrenLength >= 3) {
-            for (let j = 0, brCount = 0; j < childrenLength; j += 1) {
-              if (brCount >= 3) {
-                isPossibleContentNode = true;
-                largestTxtNode = child;
-                largestTxtCount = txtCount;
-                break;
-              }
-
-              if (children[j].tagName === 'BR') brCount += 1;
+          for (let j = 0; j < childrenLength; j += 1) {
+            // Because ads may has long text, so only text with one or more blank lines are considered novel text
+            if (children[j].tagName === 'BR') {
+              largestTxtNode = child;
+              largestTxtCount = txtCount;
+              break;
             }
           }
-          if (!isPossibleContentNode) {
+          if (child !== largestTxtNode) {
             traverseNodesByDepthFirst(child);
           }
         }
