@@ -307,7 +307,7 @@ async function evalNovel(endpoint) {
 
   for (;;) {
     if (!chapterHeader) {
-      chapterHeader = getChapterHeaderByIndexPageLinks(page.url(), indexPageLinks);
+      chapterHeader = getChapterHeaderByIndexPageLinks(page.url().split('?')[0], indexPageLinks);
       if (!chapterHeader) {
         console.log(`\n\nIndexPage没有 ${page.url()} 的链接，退出`);
         break;
