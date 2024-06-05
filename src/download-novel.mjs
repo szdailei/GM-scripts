@@ -25,7 +25,7 @@ async function main() {
 
   const { novelName, html } = await evalNovel(endpoint);
   const outputFile = `${join(outputDir, novelName)}.html`;
-  await fs.promises.writeFile(outputFile, html);
+  fs.writeFileSync(outputFile, html);
 }
 
 main();
