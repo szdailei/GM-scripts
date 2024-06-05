@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
-import os from 'os';
 import fs from 'fs';
 import open from 'open';
 import inquirer from 'inquirer';
@@ -356,8 +355,7 @@ async function evalNovel(endpoint) {
 
   if (hasVerificationCode(page)) {
     const base64Str = await getBase64StrOfVerficationCodeImage(page);
-    const userHomeDir = os.homedir();
-    const imageFile = `${userHomeDir}/verification_code.png`;
+    const imageFile = `/tmp/verification_code.png`;
     fs.writeFileSync(imageFile, base64Str, 'base64');
 
     open(`file://${imageFile}`);
