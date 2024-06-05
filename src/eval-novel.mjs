@@ -2,6 +2,7 @@
 /* eslint-disable no-await-in-loop */
 import os from 'os';
 import fs from 'fs';
+import open from 'open';
 import inquirer from 'inquirer';
 import puppeteer from 'puppeteer-core';
 
@@ -260,13 +261,13 @@ async function getContent(page, id, className) {
               ) {
                 const start = value.split('。。')[0];
                 if (!isNumeric(start)) {
-                  txt += `${value}\n<br>`;
+                  txt += `<p>${value}\n</p>`;
                 }
               }
             }
           }
         } else if (childNode.nodeName === 'P') {
-          txt += `${childNode.textContent.trim()}\n<br>`;
+          txt += `<p>${childNode.textContent.trim()}\n</p>`;
         }
       }
 
@@ -323,9 +324,14 @@ function createStartOfHtml(indexPageUrlWithTextFragment, novelName) {
     font-size:28px;
   }
   .content {
+    text-indent:1em;
+  	line-height:1.5;
     font-weight:700;
     font-size:24px;
   }
+  p {
+    margin:8px 0 8px 0;
+ }
   </style>
 </head>
 
@@ -350,9 +356,11 @@ async function evalNovel(endpoint) {
 
   if (hasVerificationCode(page)) {
     const base64Str = await getBase64StrOfVerficationCodeImage(page);
-    console.log('有验证码，退出');
     const userHomeDir = os.homedir();
-    fs.writeFileSync(`${userHomeDir}/verification_code.png`, base64Str, 'base64');
+    const imageFile = `${userHomeDir}/verification_code.png`;
+    fs.writeFileSync(imageFile, base64Str, 'base64');
+
+    open(`file://${imageFile}`);
 
     const questions = [
       {

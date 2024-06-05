@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "inquirer": "^9.2.23",
+    "open": "^10.1.0",
     "ps-list": "^8.1.1",
     "puppeteer-core": "^22.6.4",
     "shelljs": "^0.8.5"
