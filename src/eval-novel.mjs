@@ -251,19 +251,22 @@ async function getContent(page, id, className) {
         if (childNode.nodeName === '#text') {
           const value = childNode.nodeValue.trim();
           if (value.length > 0) {
-            if (
-              !(isFirstLine && value[0] === '第' && value.indexOf('章') !== -1) &&
-              value.indexOf('(本章完)') === -1 &&
-              value.indexOf('本章未完，请点击下一页') === -1 &&
-              value.indexOf('看完记得收藏【') === -1
-            ) {
-              const theFirst = value.split('。。')[0];
-              if (!isNumeric(theFirst)) {
-                txt += `${value}\n<br>`;
-                isFirstLine = false;
+            if (!(isFirstLine && value[0] === '第' && value.indexOf('章') !== -1)) {
+              isFirstLine = false;
+              if (
+                value.indexOf('(本章完)') === -1 &&
+                value.indexOf('本章未完，请点击下一页') === -1 &&
+                value.indexOf('看完记得收藏【') === -1
+              ) {
+                const start = value.split('。。')[0];
+                if (!isNumeric(start)) {
+                  txt += `${value}\n<br>`;
+                }
               }
             }
           }
+        } else if (childNode.nodeName === 'P') {
+          txt += `${childNode.textContent.trim()}\n<br>`;
         }
       }
 
