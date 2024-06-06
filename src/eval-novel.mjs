@@ -265,7 +265,7 @@ async function getContent(page, id, className) {
               }
             }
           }
-        } else if (childNode.nodeName === 'P') {
+        } else {
           txt += `<p>${childNode.textContent.trim()}\n</p>`;
         }
       }
