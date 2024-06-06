@@ -329,8 +329,8 @@ function createStartOfHtml(indexPageUrlWithTextFragment, novelName) {
     font-size:24px;
   }
   p {
-    margin:8px 0 8px 0;
- }
+    margin:0
+  }
   </style>
 </head>
 
